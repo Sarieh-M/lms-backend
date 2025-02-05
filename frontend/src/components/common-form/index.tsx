@@ -1,3 +1,4 @@
+import { ICommonForm } from "@/interfaces";
 import { Button } from "../ui/button";
 import FormControls from "./form-controls";
 
@@ -8,7 +9,7 @@ function CommonForm({
   formData,
   setFormData,
   isButtonDisabled = false,
-}:) {
+}: ICommonForm) {
   return (
     <form onSubmit={handleSubmit}>
       {/* render form controls here */}

@@ -1,3 +1,4 @@
+import { IFormControl, ISignFormControls } from "@/interfaces";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
@@ -9,8 +10,8 @@ import {
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 
-function FormControls({ formControls = [], formData, setFormData }) {
-  function renderComponentByType(getControlItem) {
+function FormControls({ formControls, formData, setFormData }: IFormControl) {
+  function renderComponentByType(getControlItem: ISignFormControls) {
     let element = null;
     const currentControlItemValue = formData[getControlItem.name] || "";
 
