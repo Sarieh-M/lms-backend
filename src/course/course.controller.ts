@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -11,6 +11,7 @@ import { Types } from 'mongoose';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LectureDTO } from './dto/lecture-course.dto';
 import { AuthGuard } from 'src/user/Guards/auth.guard';
+import { Request } from 'express';
 
 @ApiTags('Courses')
 @Controller('api/course')
@@ -117,8 +118,10 @@ public getAllCourses(
   @Query('page') page = 1,
   @Query('limit') limit = 10,
   @Query('useFilter') useFilter = false,
-  @Query('lang') lang: 'en' | 'ar' = 'en')
+  @Req() req?:Request,
+)
   {
+    const lang=(req as any).lang || 'en';
     return this.courseService.getAllCourses(category, level, primaryLanguage, sortBy, page, limit, useFilter, lang);
   }
 
@@ -134,7 +137,10 @@ public getAllCourses(
 @ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
 @ApiResponse({ status: 404, description: 'Course not found' })
 @ApiParam({name: 'id',description: 'The ID of the course to retrieve',example: '642b821384f25c6d9f9c0b10',})
-public getCourseDetailsByID(@Param('id') id: string, @Query('lang') lang: 'en' | 'ar' = 'en') {
+public getCourseDetailsByID(
+  @Param('id') id: string, 
+  @Req() req?:Request,) {
+     const lang=(req as any).lang || 'en';
   if (!Types.ObjectId.isValid(id)) {
     throw new BadRequestException('Invalid course ID format');
   }

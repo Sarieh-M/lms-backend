@@ -4,11 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { LanguageInterceptor } from './common/interceptors/language.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-
+  // this one for interceptr
+  app.useGlobalInterceptors(new LanguageInterceptor());
+  //==========================
   app.useGlobalPipes(new ValidationPipe({
     transform: true,
     whitelist: true,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, UseGuards, Query, Type } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, UseGuards, Query, Type, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -62,8 +62,10 @@ export class UserController {
   @ApiOperation({ summary: 'Get current user details' })
   @ApiResponse({ status: 200, description: 'Current user retrieved successfully' })
   public getCurrentUser(
-    @CurrentUser() userPayload: JWTPayloadType,@Query('lang')lang :'en'|'ar'='en'
+    @CurrentUser() userPayload: JWTPayloadType,
+    @Req() req?:Request,
   ) {
+    const lang=(req as any).lang || 'en';
     return this.userService.getCurrentUser(userPayload.id,lang);
   }
 
@@ -146,8 +148,9 @@ export class UserController {
     @Query('limit') limit = 10,
     @Query('search') search?: string,
     @Query('role') role?: string,
-    @Query('lang')lang :'en'|'ar'='en'
+     @Req() req?:Request,
   ) {
+    const lang=(req as any).lang || 'en';
     return this.userService.getAllUsers(+page, +limit, search, role,lang);
   }
 
