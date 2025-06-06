@@ -14,13 +14,11 @@ class LocalizedStringDto {
 
 export class  RegisterUserDto {
         @IsNotEmpty({message: 'User Name is required'})
-        @ValidateNested()
-        @Type(() => LocalizedStringDto)
         @ApiProperty({
                 description: 'Name of the user',
                 example: 'John Doe',
         })
-        userName:{en:string,ar:string};
+        userName:string;
 
         @IsNotEmpty({message: 'User Email is required'})
         @MaxLength(250,{ message: 'Password must not exceed 250 characters' })

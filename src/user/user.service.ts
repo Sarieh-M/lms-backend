@@ -43,21 +43,15 @@ export class UserService {
    * Register a new user and initiate email verification.
    * Expects userName as { en: string; ar: string }
    */
-    public async Register(registerUserDto: RegisterUserDto) {
-      if (
-        !registerUserDto.userName ||
-        typeof registerUserDto.userName !== 'object' ||
-        !registerUserDto.userName.en ||
-        !registerUserDto.userName.ar
-      ) {
-        throw new BadRequestException('userName must be an object with both en and ar fields');
-      }
-  
-      registerUserDto.userName.en = registerUserDto.userName.en.toLowerCase();
-      registerUserDto.userName.ar = registerUserDto.userName.ar.toLowerCase();
-  
-      return await this.authProvider.Register(registerUserDto);
-    }
+   public async Register(registerUserDto: RegisterUserDto) {
+  if (!registerUserDto.userName || typeof registerUserDto.userName !== 'string') {
+    throw new BadRequestException('userName must be a non-empty string');
+  }
+
+  registerUserDto.userName = registerUserDto.userName.toLowerCase();
+
+  return await this.authProvider.Register(registerUserDto);
+}
   
     /**
      * Authenticate a user and return a JWT access token.
@@ -88,7 +82,7 @@ export class UserService {
   if (!user) throw new NotFoundException('User not found');
 
   return {
-    userName: user.userName?.[lang] ?? user.userName?.en ?? '',
+    userName: user.userName,
     role: this.roleTranslations[user.role]?.[lang] || user.role,
     gender: this.genderTranslations[user.gender]?.[lang] || user.gender,
     userEmail:user.userEmail,
@@ -143,7 +137,7 @@ export class UserService {
 
   const usersWithLang = users.map((u) => ({
     ...u,
-    userName: u.userName?.[lang] ?? u.userName?.en ?? '',
+    userName: u.userName,
     role: this.roleTranslations[u.role]?.[lang] || u.role,
     gender: this.genderTranslations[u.gender]?.[lang] || u.gender,
   }));
@@ -197,7 +191,7 @@ export class UserService {
 
     if (userName) {
       // تحديث الاسم بكل اللغات (en, ar)
-      if (typeof userName === 'object' && userName.en && userName.ar) {
+      if (typeof userName === 'string' ) {
         userFromDB.userName = userName;
       } else {
         throw new BadRequestException(
