@@ -1,0 +1,36 @@
+PORT=5000
+
+
+
+# DataBase String URL
+DataBase_URL="mongodb+srv://amer_158819:amer_158819@cluster0.cgvlr7r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+# JWT OPTION
+JWT_SECRET=ajvwfyuvawifu21oiug2r125125769SDGHERJE46346TRHYsdgsdge23lmponmaoind
+JWT_EXPIRES_IN=1d
+
+# JWT REFRESH TOKEN 
+JWT_REFRESH_SECRET=B12IK4UJ12IafkjkljawhU4CF7128asfasf8712asf64V718n9c812y4182y4c917vyb87912sdf4ybv89
+JWT_REFRESH_EXPIRES_IN='7d'
+
+# SMTP (Simple Mail Transfer Protocol)
+MAIL_USER=mhabnoor75@gmail.com
+MAIL_PASS=grylxexibuiscxwa
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=465
+MAIL_SECURE=true
+
+# Paypal
+PAYPAL_CLIENT_ID=AQ2DyWK8hB66bbRbWK5gc61IxetlZF5dK55Q69jCjNSuRN9JBTTGsvzLJLrEuCbIg_e3if3DLxzRD8id
+PAYPAL_CLIENT_SECRET=EA3wZ1YBH-B-3oIThA0Yxd0ZOCjxcaWS2_K8a3aYFw7TLBtZlV_MVt0bhMH1pkVzFoF3csSBUVcHGSpO
+PAYPAL_BASE_API=https://api-m.sandbox.paypal.com
+
+
+
+# cloudinary
+CLOUDINARY_NAME=dmage6us4
+CLOUDINARY_API_KEY=353417832366768
+CLOUDINARY_API_SECRET=qK0sDKpcnAkg0Gti-WNiVwZ8UoI
+
+DOMAIN=http://localhost:5000
+CLIENT_DOMAIN =http://localhost:3000
