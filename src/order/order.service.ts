@@ -1,4 +1,4 @@
-import { HttpException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import {  OrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import { CourseService } from 'src/course/course.service';
 import { MetadataArgsStorage } from 'typeorm/metadata-args/MetadataArgsStorage';
 import { Domain } from 'domain';
 import { User } from 'src/user/schemas/user.schema';
+import { request, Request } from 'express';
 
 @Injectable()
 export class OrderService {
@@ -27,19 +28,19 @@ export class OrderService {
         private readonly studentCourseService: StudentCourseService,
         private readonly courseService: CourseService,
     ){ }
-
-
 /**
  * Create order and paid by paypal
  * @param orderDto details of course
  * @param userId id of user
  * @returns URL of paypal for paid
  */
- public async createOrder(orderDto: OrderDto, userId: Types.ObjectId) {
+ public async createOrder(orderDto: OrderDto, userId: Types.ObjectId,req:Request) {
+      const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+
     try {
       
       const domain = this.configService.get<string>('DOMAIN');
-      if (!domain) throw new InternalServerErrorException('DOMAIN غير مضبوط');
+    if (!domain) throw new InternalServerErrorException(lang === 'ar' ? 'DOMAIN غير مضبوط' : 'DOMAIN is not configured');
 
      
       const payload = {
@@ -58,15 +59,14 @@ export class OrderService {
       
       const paymentResponse = await this.paypalService.createPayment(payload);
       const approveUrl = paymentResponse.links.find(l => l.rel === 'approve')?.href;
-      if (!approveUrl) throw new Error('رابط الموافقة غير موجود');
+    if (!approveUrl) throw new InternalServerErrorException(lang === 'ar' ? 'رابط الموافقة غير موجود' : 'Approval link not found');
 
     
-      const user = await this.userModel.findById(userId);
-      if (!user) throw new InternalServerErrorException('المستخدم غير موجود');
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new InternalServerErrorException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
 
-     
-      const course = await this.courseService.getCourseDetailsByID(orderDto.courseId);
-      if (!course) throw new InternalServerErrorException('الكورس غير موجود');
+    const course = await this.courseService.getCourseDetailsByID(orderDto.courseId);
+    if (!course) throw new InternalServerErrorException(lang === 'ar' ? 'الكورس غير موجود' : 'Course not found');
 
      
       const newOrder = {
@@ -94,9 +94,12 @@ export class OrderService {
       return { success: true, approveUrl };
     } catch (err) {
       console.error('Something went wrong while creating the order:', err);
-      throw new InternalServerErrorException(
-        'Something went wrong while creating the order',
-      );
+      const lang = req?.headers?.['lang'] === 'ar' || req?.headers?.['language'] === 'ar' ? 'ar' : 'en';
+    throw new InternalServerErrorException(
+      lang === 'ar'
+        ? 'حدث خطأ أثناء إنشاء الطلب'
+        : 'Something went wrong while creating the order',
+    );
     }
   }
 
@@ -108,27 +111,43 @@ export class OrderService {
      * @param orderId Order ID in the database
      * @returns Order confirmation response
      */
-    public async capturePaymentAndFinalizeOrder(body:Ids){
-        try{
-            const order = await this.orderModel.findById(body.orderId);
-            if (!order) {
-                throw new Error("Order not found");
-            }
-            order.paymentStatus = "paid";
-            order.orderStatus = "confirmed";
-            order.paymentId = body.paymentId;
-            order.payerId = body.payerId;
-            await order.save();
-            await this.studentCourseService.UpdateStudentCourses(order);
-            await this.courseService.updateCourseJustFieldStudent(order);
-            return{
-                success:true,
-                message:"Order confirmed",
-                data:order
-            };
-        }catch(err){
-            console.error("Error in capturePaymentAndFinalizeOrder:", err);
-            throw new Error("Failed to capture payment and finalize order");
-        }
+    public async capturePaymentAndFinalizeOrder(body: Ids, req: Request) {
+  try {
+    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+
+    const order = await this.orderModel.findById(body.orderId);
+    if (!order) {
+      const message = lang === 'ar' ? 'الطلب غير موجود' : 'Order not found';
+      throw new NotFoundException(message);
     }
+
+    order.paymentStatus = "paid";
+    order.orderStatus = "confirmed";
+    order.paymentId = body.paymentId;
+    order.payerId = body.payerId;
+
+    await order.save();
+
+    await this.studentCourseService.UpdateStudentCourses(order);
+    await this.courseService.updateCourseJustFieldStudent(order, req);
+
+    const successMessage = lang === 'ar' ? 'تم تأكيد الطلب بنجاح' : 'Order confirmed successfully';
+
+    return {
+      success: true,
+      message: successMessage,
+      data: order,
+    };
+
+  } catch (err) {
+    console.error("Error in capturePaymentAndFinalizeOrder:", err);
+
+    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+    const errorMessage = lang === 'ar'
+      ? 'فشل في تأكيد الطلب ومعالجة الدفع'
+      : 'Failed to capture payment and finalize order';
+
+    throw new InternalServerErrorException(errorMessage);
+  }
+}
 }

@@ -45,5 +45,40 @@ export class User {
   @Prop({ required: false })
   verificationToken: string;
 }
+// هنا منضيف الـ hook
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+
+
+// ✅ استخدم deleteOne بدلاً من remove
+// UserSchema.pre<UserDocument>('deleteOne', { document: true, query: false }, async function (next) {
+//   const userId = this._id;
+
+//   await this.model('Course').deleteMany({ instructorId: userId });
+
+//   next();
+// });
+
+UserSchema.pre<UserDocument>('deleteOne', { document: true, query: false }, async function (next) {
+  const userId = this._id;
+  const courseModel = this.model('Course');
+  const courseProgressModel = this.model('CourseProgress');
+  const studentCourseModel = this.model('Student');
+  const lectureProgressModel = this.model('LectureProgres');
+
+  if (this.role === UserRole.TEACHER) {
+    const courses = await courseModel.find({ instructorId: userId });
+    for (const course of courses) {
+      await course.deleteOne(); // 🔁 triggers course-level cascade delete
+    }
+  }
+
+  if (this.role === UserRole.STUDENT) {
+    await courseProgressModel.deleteMany({ userId });
+    await lectureProgressModel.deleteMany({ userId });
+    await studentCourseModel.deleteMany({ userId });
+  }
+
+  next();
+});

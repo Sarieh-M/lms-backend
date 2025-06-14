@@ -58,6 +58,37 @@ export class Course {
 const CourseSchema = SchemaFactory.createForClass(Course);
 
 // Hook for cascading deletes when a course is deleted
+CourseSchema.pre<CourseDocument>('deleteOne', { document: true, query: false }, async function (next) {
+  const courseId = this._id;
 
+  const courseProgressModel = this.model('CourseProgress');
+  const studentCourseModel = this.model('Student');
+  const orderModel = this.model('Order');
+  const lectureModel = this.model('Lecture');
+  const lectureProgressModel = this.model('LectureProgres');
+
+  // 🧼 حذف CourseProgress
+  await courseProgressModel.deleteMany({ courseId });
+
+  // 🧼 حذف الكورس من StudentCourse
+  await studentCourseModel.updateMany(
+    {},
+    { $pull: { 'courses.$[].idCourses': courseId } }
+  );
+
+  // 🧼 حذف الطلبات المتعلقة بالكورس
+  await orderModel.deleteMany({ courseId });
+
+  // 🧼 جلب وحذف المحاضرات
+  const lectureDocs = await lectureModel.find({ _id: { $in: this.curriculum || [] } });
+  const lectureIds = lectureDocs.map(lec => lec._id.toString());
+
+  await lectureModel.deleteMany({ _id: { $in: lectureIds } });
+
+  // 🧼 حذف تقدم المحاضرات
+  await lectureProgressModel.deleteMany({ lectureId: { $in: lectureIds } });
+
+  next();
+});
 
 export { CourseSchema };

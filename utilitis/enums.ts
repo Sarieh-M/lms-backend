@@ -15,6 +15,11 @@ export enum CourseLevel {
     INTERMEDIATE = "Intermediate",
     ADVANCED = "Advanced",
 }
+export enum CourseLevelAr {
+    BEGINNER = "مبتدئ",
+    INTERMEDIATE = "متوسط",
+    ADVANCED = "متقدم",
+}
 
 export enum PrimaryLanguage {
     ENGLISH = 'English',

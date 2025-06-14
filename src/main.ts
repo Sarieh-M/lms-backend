@@ -4,8 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { LanguageInterceptor } from './common/interceptors/language.interceptor';
-
+import { LanguageInterceptor } from './common/interceptor/language.interceptor';
+import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
@@ -17,7 +17,13 @@ async function bootstrap() {
     whitelist: true,
     forbidNonWhitelisted: true,
   }));
-
+  app.use(cookieParser());
+  app.enableCors({
+    origin: 'http://localhost:5173', // Allow specific domain
+    methods: 'GET,POST,PATCH,PUT,DELETE', // Allow HTTP methods
+    credentials: true, // Allow cookies to be sent
+    allowedHeaders: 'Content-Type, Authorization', // Permitted request headers
+  });
   app.use(helmet());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -51,3 +57,5 @@ async function bootstrap() {
   console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();
+
+

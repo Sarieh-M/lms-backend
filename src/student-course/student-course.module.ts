@@ -10,6 +10,7 @@ import { UserModule } from 'src/user/user.module';
 import { User, UserSchema } from 'src/user/schemas/user.schema';
 import { Course, CourseSchema } from 'src/course/Schemas/course.schema';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
+import { LectureProgres, LectureProgresSchema } from 'src/course-progress/schemas/lecture-progress.schema';
 
 @Module({
   imports: [forwardRef(()=>CourseModule),
@@ -19,6 +20,7 @@ import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schema
                               {name:User.name, schema: UserSchema},
                               {name:Course.name, schema: CourseSchema},
                               {name:CourseProgress.name, schema: CourseProgressSchema},
+                              { name: LectureProgres.name, schema: LectureProgresSchema },
                             ]),
   ],
   exports:[StudentCourseService,MongooseModule],

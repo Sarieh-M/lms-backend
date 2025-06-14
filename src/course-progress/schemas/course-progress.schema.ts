@@ -21,8 +21,8 @@ export class CourseProgress {
   @Prop({ default: null }) 
   completionDate: Date;
 
-  @Prop({ required: true, type: [{ type: mongoose.Types.ObjectId, ref: "LectureProgress" }] })
-  lecturesProgress: Types.ObjectId[];
+  @Prop({ required: true, type: [{ type: mongoose.Types.ObjectId, ref: "LectureProgres" }] })
+  LectureProgres: Types.ObjectId[];
   
 }
 

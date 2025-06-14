@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { StudentCourseService } from './student-course.service';
 import { Types } from 'mongoose';
 import { CurrentUser } from 'src/user/decorator/current-user.decorator';
@@ -7,6 +7,7 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { AuthRolesGuard } from 'src/user/Guards/auth-role.guard';
 import { AuthGuard } from 'src/user/Guards/auth.guard';
+import { Request } from 'express';
 
 @ApiTags('Student Course')
 @Controller('student-course')
@@ -74,10 +75,12 @@ export class StudentCourseController {
   public checkCoursePurchaseInfo(
     @Param('courseId') courseId: string,
     @CurrentUser() user: JWTPayloadType,
+    @Req()req:Request
   ) {
     return this.studentCourseService.checkCoursePurchaseInfo(
       new Types.ObjectId(courseId),
       user,
+      req
     );
   }
 
@@ -99,10 +102,12 @@ export class StudentCourseController {
   public getAllCoursesForCurrentStudent(
     @Param('studentId') studentId: string,
     @CurrentUser() user: JWTPayloadType,
+    @Req()req:Request
   ) {
     return this.studentCourseService.getAllCoursesForCurrentStudent(
       new Types.ObjectId(studentId),
       user,
+      req
     );
   }
 

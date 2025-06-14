@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, Req, UnauthorizedException } from '@nestjs/common';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -8,6 +8,7 @@ import { UserService } from 'src/user/user.service';
 import { LectureDTO } from './dto/lecture-course.dto';
 import { Lecture } from './Schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
+import { Request } from 'express';
 
 
 @Injectable()
@@ -16,6 +17,7 @@ export class CourseService {
     constructor(@InjectModel(Course.name)private readonly courseModel: Model<Course>,
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>
+    
 ) {}
     /**
      * Create a new course
@@ -23,10 +25,12 @@ export class CourseService {
      * @param instructorId id fo logged in user
      * @returns the created Course from database 
      */
-    public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.ObjectId) {
-        const user = await this.userService.getCurrentUserDocument(instructorId);
+    public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.ObjectId,req: Request) {
+        const user = await this.userService.getCurrentUserDocument(instructorId,req);
         if (!user) {
-          throw new NotFoundException('User not found');
+const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+          const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+          throw new NotFoundException(message);
         }
       
         const newCourse = await this.courseModel.create({
@@ -53,6 +57,10 @@ export class CourseService {
             en: createCourseDto.subtitle.en.toLowerCase(),
             ar: createCourseDto.subtitle.ar.toLowerCase(),
           },
+          level:{
+            en: createCourseDto.level.en.toLowerCase(),
+            ar: createCourseDto.level.ar.toLowerCase(),
+          },
         });
       
         user.enrolledCourses.push(newCourse._id);
@@ -67,7 +75,7 @@ export class CourseService {
  * @param lectureDto 
  * @returns the created Lecture from database  
  */
-public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO) {
+public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO,req: Request) {
     const lecture = await this.lectureModel.create({
       ...lectureDto,
       title: {
@@ -78,7 +86,9 @@ public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO
   
     const course = await this.courseModel.findById(idCourse);
     if (!course) {
-      throw new NotFoundException('Course not found');
+const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+          const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+      throw new NotFoundException(message);
     }
   
     course.curriculum.push(lecture._id);
@@ -174,6 +184,7 @@ public async getCourseDetailsByID(id: Types.ObjectId,lang: 'en' | 'ar' = 'en',) 
     
   
     if (!courseDetails) {
+      
       throw new NotFoundException('Course not found');
     }
   
@@ -208,10 +219,17 @@ public async getCourseDetailsByID(id: Types.ObjectId,lang: 'en' | 'ar' = 'en',) 
      * @param instructorId id of instructore of course
      * @returns updating course
      */
-    public async updateCourseByID(id:Types.ObjectId, updateCourseDto:UpdateCourseDto,instructorId:Types.ObjectId){
+    public async updateCourseByID(id:Types.ObjectId, updateCourseDto:UpdateCourseDto,instructorId:Types.ObjectId,req:Request){
+      const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
         const course = await this.courseModel.findById(id);
-        if(!course)throw new NotFoundException('Course not found');
-        if(course.instructorId.toString() !== instructorId.toString()) throw new UnauthorizedException('You are not authorized to update this course');
+        if(!course){
+          const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+          throw new NotFoundException(message);}
+        if(course.instructorId.toString() !== instructorId.toString()){
+          const message = lang === 'ar' ? 'لست مخولًا لتحديث هذه الدورة' : 'You are not authorized to update this course';
+           throw new UnauthorizedException(message);
+          }
+
         const updatedCourse = await this.courseModel.findByIdAndUpdate(id,{
             ...updateCourseDto,
             title:{
@@ -237,27 +255,38 @@ public async getCourseDetailsByID(id: Types.ObjectId,lang: 'en' | 'ar' = 'en',) 
               },
         },{new:true});
         if (!updatedCourse) {
-            throw new NotFoundException('Failed to update the course');
+const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+          const message = lang === 'ar' ? 'فشل في تحديث الدورة' : 'Failed to update the course';
+            throw new NotFoundException(message);
         }
         return updatedCourse;
     }
-    public async updateCourseJustFieldStudent(order:HydratedDocument<Order>){
+    public async updateCourseJustFieldStudent(order:HydratedDocument<Order>,req:Request){
         const course = await this.getCourseDetailsByID(order.courseId);
-        const user = await this.userService.getCurrentUserDocument(order.userId);
+        const user = await this.userService.getCurrentUserDocument(order.userId,req);
         course.students.push(user._id);
         
     }
 // delete course
-    public async deleteCourse(courseId: Types.ObjectId) {
+    public async deleteCourse(courseId: Types.ObjectId,req:Request) {
+      const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
         try {
-          const deletedCourse = await this.courseModel.findOneAndDelete({ _id: courseId });
-          if (!deletedCourse) {
-            throw new NotFoundException('Course not found');
-          }
-          return { success: true, message: 'Course deleted successfully' };
+          // const deletedCourse = await this.courseModel.findOneAndDelete({ _id: courseId });
+          const course = await this.courseModel.findById(courseId);
+            if (!course) {
+          const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+              throw new NotFoundException(message);
+            }
+            await course.deleteOne(); // 🔥 هذا يفعّل الـ hook
+          // if (!deletedCourse) {
+          //   throw new NotFoundException('Course not found');
+          // }
+          const message = lang === 'ar' ? 'تم حذف الدورة بنجاح' : 'Course deleted successfully';
+          return { 
+            success: true, message: message };
         } catch (error) {
-          console.error('Error deleting course:', error);
-          throw new InternalServerErrorException('Failed to delete course');
+          const message = lang === 'ar' ? 'فشل في حذف الدورة' : 'Failed to delete course';
+          throw new InternalServerErrorException(message);
         }
       }
 }

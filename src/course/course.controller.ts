@@ -18,144 +18,147 @@ import { Request } from 'express';
 export class CourseController {
   constructor(private readonly courseService: CourseService) {}
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Admin & Teacher Endpoints
-  // ─────────────────────────────────────────────────────────────────────
-
-  /**
-   * Create a new course.
-   *
-   * Guards: AuthGuard, AuthRolesGuard(['admin','teacher'])
-   * @body CreateCourseDto
-   * @returns the created course
-   */
   @Post('add-course')
   @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard, AuthRolesGuard)
-  @Roles('admin','teacher')
+  @Roles('admin', 'teacher')
   @ApiOperation({ summary: 'Add a new course' })
   @ApiResponse({ status: 201, description: 'Course created successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden. Only ADMIN or TEACHER can add courses.' })
   @ApiBody({ description: 'Data for the new course', type: CreateCourseDto })
-  public AddNewCourse(@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),)
-    createCourseDto: CreateCourseDto,@CurrentUser() user: JWTPayloadType,
+  public AddNewCourse(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    createCourseDto: CreateCourseDto,
+    @CurrentUser() user: JWTPayloadType,
+    @Req()req:Request
   ) {
-    return this.courseService.AddNewCourse(createCourseDto, user.id);
+    return this.courseService.AddNewCourse(createCourseDto, user.id,req);
   }
 
-  /**
-   * Add a lecture to an existing course.
-   *
-   * Guards: AuthGuard, AuthRolesGuard(['admin','teacher'])
-   * @param idCourse - ObjectId of the course
-   * @body LectureDTO
-   * @returns the updated course with new lecture
-   */
   @Post(':idCourse/add-lecture-to-course')
   @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard, AuthRolesGuard)
-  @Roles('admin','teacher')
+  @Roles('admin', 'teacher')
   @ApiOperation({ summary: 'Add a new lecture to a course' })
   @ApiResponse({ status: 201, description: 'Lecture added successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden. Only ADMIN or TEACHER can add lectures.' })
   @ApiParam({ name: 'idCourse', type: String, description: 'Course ObjectId' })
   @ApiBody({ description: 'Data for the new lecture', type: LectureDTO })
-  public AddLectureToCourse(@Param('idCourse') idCourse: string,
-  @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),)
+  public AddLectureToCourse(
+    @Param('idCourse') idCourse: string,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     lectureDto: LectureDTO,
+    @Req() req: Request,
   ) {
+    const lang = req.headers['lang'] || 'en';
+
     if (!Types.ObjectId.isValid(idCourse)) {
-      throw new BadRequestException('Invalid course ID format');
+      throw new BadRequestException(
+        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      );
     }
-    return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse),lectureDto,);
+
+    return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse), lectureDto,req);
   }
 
-  /**
-   * Update an existing course by its ID.
-   *
-   * Guards: AuthGuard, AuthRolesGuard(['admin','teacher'])
-   * @param id - ObjectId of the course
-   * @body UpdateCourseDto
-   * @returns the updated course
-   */
   @Patch('update/:id')
   @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard, AuthRolesGuard)
-  @Roles('admin','teacher')
+  @Roles('admin', 'teacher')
   @ApiOperation({ summary: 'Update a course by ID' })
   @ApiResponse({ status: 200, description: 'Course updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden. Only ADMIN or TEACHER can update courses.' })
-  @ApiParam({name: 'id',description: 'The ID of the course to update',example: '642b821384f25c6d9f9c0b10',})
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the course to update',
+    example: '642b821384f25c6d9f9c0b10',
+  })
   @ApiBody({ description: 'Data to update the course', type: UpdateCourseDto })
-  public updateCourseByID(@Param('id') id: string,
-  @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),)
-  updateCourseDto: UpdateCourseDto,@CurrentUser() user: JWTPayloadType,
-) {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new BadRequestException('Invalid course ID format');
-  }
-  return this.courseService.updateCourseByID(new Types.ObjectId(id),updateCourseDto,user.id,);
-}
+  public updateCourseByID(
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    updateCourseDto: UpdateCourseDto,
+    @CurrentUser() user: JWTPayloadType,
+    @Req() req: Request,
+  ) {
+    const lang = req.headers['lang'] || 'en';
 
-// ─────────────────────────────────────────────────────────────────────
-// Public Endpoints
-// ─────────────────────────────────────────────────────────────────────
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException(
+        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      );
+    }
 
-/**
- * Retrieve all courses.
- * Public: no authentication required.
- *
- * @returns array of all courses
- */
-@Get()
-@ApiOperation({ summary: 'Retrieve all courses' })
-@ApiResponse({ status: 200, description: 'List of courses retrieved successfully' })
-public getAllCourses(
-  @Query('category') category?: string,
-  @Query('level') level?: string,
-  @Query('primaryLanguage') primaryLanguage?: string,
-  @Query('sortBy') sortBy?: string,
-  @Query('page') page = 1,
-  @Query('limit') limit = 10,
-  @Query('useFilter') useFilter = false,
-  @Req() req?:Request,
-)
-  {
-    const lang=(req as any).lang || 'en';
-    return this.courseService.getAllCourses(category, level, primaryLanguage, sortBy, page, limit, useFilter, lang);
+    return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id,req);
   }
 
-/**
- * Get detailed information about a single course.
- * Public: no authentication required.
- *
- * @param id - ObjectId of the course
- * @returns the course document
- */
-@Get(':id')
-@ApiOperation({ summary: 'Get course details by ID' })
-@ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
-@ApiResponse({ status: 404, description: 'Course not found' })
-@ApiParam({name: 'id',description: 'The ID of the course to retrieve',example: '642b821384f25c6d9f9c0b10',})
-public getCourseDetailsByID(
-  @Param('id') id: string, 
-  @Req() req?:Request,) {
-     const lang=(req as any).lang || 'en';
-  if (!Types.ObjectId.isValid(id)) {
-    throw new BadRequestException('Invalid course ID format');
-  }
-  return this.courseService.getCourseDetailsByID(new Types.ObjectId(id),lang);
-}
+  // ──────────────────────────────
+  // Public Endpoints
+  // ──────────────────────────────
 
-@Delete('delete/:id')
+  @Get()
+  @ApiOperation({ summary: 'Retrieve all courses' })
+  @ApiResponse({ status: 200, description: 'List of courses retrieved successfully' })
+  public getAllCourses(
+    @Query('category') category?: string,
+    @Query('level') level?: string,
+    @Query('primaryLanguage') primaryLanguage?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('useFilter') useFilter = false,
+    @Req() req?: Request,
+  ) {
+    const lang = req?.headers['lang'] || 'en';
+    return this.courseService.getAllCourses(
+      category,
+      level,
+      primaryLanguage,
+      sortBy,
+      page,
+      limit,
+      useFilter,
+    );
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get course details by ID' })
+  @ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the course to retrieve',
+    example: '642b821384f25c6d9f9c0b10',
+  })
+  public getCourseDetailsByID(@Param('id') id: string, @Req() req: Request) {
+    const lang = req.headers['lang'] || 'en';
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException(
+        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      );
+    }
+
+    return this.courseService.getCourseDetailsByID(new Types.ObjectId(id));
+  }
+
+  @Delete('delete/:id')
   @UseGuards(AuthGuard, AuthRolesGuard)
-  @Roles('admin', 'teacher') // فقط الأدمن أو صاحب الكورس يسمح له بالحذف
+  @Roles('admin', 'teacher')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Delete a course by ID' })
   @ApiParam({ name: 'id', description: 'Course ID', type: String })
   @ApiResponse({ status: 200, description: 'Course deleted successfully' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  async deleteCourse(@Param('id') id: string) {
-    return this.courseService.deleteCourse(new Types.ObjectId(id));
+  async deleteCourse(@Param('id') id: string, @Req() req: Request) {
+    const lang = req.headers['lang'] || 'en';
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException(
+        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      );
+    }
+
+    return this.courseService.deleteCourse(new Types.ObjectId(id),req);
   }
 }

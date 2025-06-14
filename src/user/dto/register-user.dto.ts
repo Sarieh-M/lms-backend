@@ -1,18 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Transform, Type } from "class-transformer";
+import { Transform } from "class-transformer";
 import { IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 import { Types } from "mongoose";
 import { UserGender, UserRole } from "utilitis/enums";
 
-class LocalizedStringDto {
-        @IsNotEmpty()
-        en: string;
-      
-        @IsNotEmpty()
-        ar: string;
-      }
 
 export class  RegisterUserDto {
+        @IsString()
         @IsNotEmpty({message: 'User Name is required'})
         @ApiProperty({
                 description: 'Name of the user',

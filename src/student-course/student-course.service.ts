@@ -6,6 +6,12 @@ import { Student } from './schemas/student-course.schema';
 import { JWTPayloadType } from 'utilitis/types';
 import { Order } from '../order/schema/order.schema';
 import { Course } from '../course/schemas/course.schema';
+import { Request } from 'express';
+
+function getLangMessage(req: Request, messages: { ar: string; en: string }) {
+  const lang = req.headers['lang'] === 'ar' ? 'ar' : 'en';
+  return messages[lang];
+}
 
 /**
  * Service for managing student–course relationships:
@@ -18,40 +24,30 @@ import { Course } from '../course/schemas/course.schema';
 @Injectable()
 export class StudentCourseService {
   constructor(
-    @InjectModel(Student.name)private readonly studentModel: Model<Student>,
-    @InjectModel(Course.name)private readonly courseModel: Model<Course>,
-    @Inject(forwardRef(() => CourseService))private readonly courseService: CourseService,) {}
+    @InjectModel(Student.name) private readonly studentModel: Model<Student>,
+    @InjectModel(Course.name) private readonly courseModel: Model<Course>,
+    @Inject(forwardRef(() => CourseService)) private readonly courseService: CourseService,
+  ) {}
 
-  /**
-   * Retrieves a student record by their userId.
-   * Throws NotFoundException if no record exists.
-   */
-  public async getStudent(userId: string | Types.ObjectId) {
-    const _userId =
-      typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+  public async getStudent(userId: string | Types.ObjectId, req?: Request) {
+    const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
 
     const student = await this.studentModel.findOne({ userId: _userId });
     if (!student) {
-      throw new NotFoundException('Student Not Found');
+      throw new NotFoundException(getLangMessage(req, {
+        en: 'Student not found',
+        ar: 'لم يتم العثور على الطالب',
+      }));
     }
     return student;
   }
 
-  /**
-   * Creates an empty student record for a newly registered user.
-   */
   public async AddStudent(userId: Types.ObjectId) {
-    const student = await this.studentModel.create({
-      userId,
-      courses: [],
-    });
-    console.log('—> Created student doc:', student);
+    const student = await this.studentModel.create({ userId, courses: [] });
+    console.log('→ Created student doc:', student);
     return student;
   }
 
-  /**
-   * Retrieves courses available to students for viewing, with optional filters.
-   */
   public async getAllStudentViewCourses(
     category?: string,
     level?: string,
@@ -61,12 +57,12 @@ export class StudentCourseService {
     limit: number = 10,
   ): Promise<{ totalCourses: number; currentPage: number; totalPages: number; data: any[] }> {
     const skip = (page - 1) * limit;
-  
+
     const filter: any = { isPublished: true };
     if (category) filter.category = category;
     if (level) filter.level = level;
     if (primaryLanguage) filter.primaryLanguage = primaryLanguage;
-  
+
     let sortOption: any = {};
     switch (sortBy) {
       case 'price-lowtohigh':
@@ -85,19 +81,14 @@ export class StudentCourseService {
         sortOption.price = 1;
         break;
     }
-  
+
     const [courses, totalCourses] = await Promise.all([
-      this.courseModel
-        .find(filter)
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.courseModel.find(filter).sort(sortOption).skip(skip).limit(limit).exec(),
       this.courseModel.countDocuments(filter),
     ]);
-  
+
     const totalPages = Math.ceil(totalCourses / limit);
-  
+
     return {
       totalCourses,
       currentPage: page,
@@ -106,38 +97,40 @@ export class StudentCourseService {
     };
   }
 
-  /**
-   * Fetches detailed information about a specific course.
-   */
-  public async getStudentViewCourseDetails(
-    id: Types.ObjectId,
-  ): Promise<Course> {
+  public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
     return await this.courseService.getCourseDetailsByID(id);
   }
 
-  /**
-   * Checks whether the given student (from JWT payload) has purchased the specified course.
-   */
   public async checkCoursePurchaseInfo(
     courseId: Types.ObjectId,
     user: JWTPayloadType,
+    req: Request,
   ) {
     try {
       const _userId = new Types.ObjectId(user.id);
       const student = await this.studentModel.findOne({ userId: _userId });
+
       if (!student) {
-        throw new NotFoundException('Student Not Found');
+        throw new NotFoundException(getLangMessage(req, {
+          en: 'Student not found',
+          ar: 'الطالب غير موجود',
+        }));
       }
 
       const alreadyPurchased = student.courses.some((course) =>
         course.idCourses.includes(courseId),
       );
-      if (alreadyPurchased) {
-        return { message: 'Course is already purchased by student' };
-      }
 
       return {
-        message: 'No Data. This Course is not bought by this student',
+        message: alreadyPurchased
+          ? getLangMessage(req, {
+              en: 'Course is already purchased by student',
+              ar: 'تم شراء هذه الدورة بالفعل من قبل الطالب',
+            })
+          : getLangMessage(req, {
+              en: 'No Data. This Course is not bought by this student',
+              ar: 'لا توجد بيانات. لم يقم الطالب بشراء هذه الدورة',
+            }),
       };
     } catch (err) {
       console.error('Error in checkCoursePurchaseInfo:', err.message);
@@ -145,13 +138,8 @@ export class StudentCourseService {
     }
   }
 
-  /**
-   * Adds a purchased course to the student's record after an order completes.
-   */
   public async UpdateStudentCourses(order: HydratedDocument<Order>) {
-    let studentCourse = await this.studentModel.findOne({
-      userId: order.userId,
-    });
+    let studentCourse = await this.studentModel.findOne({ userId: order.userId });
 
     if (studentCourse) {
       studentCourse.courses.push({
@@ -163,45 +151,46 @@ export class StudentCourseService {
     } else {
       studentCourse = new this.studentModel({
         userId: order.userId,
-        courses: [
-          {
-            dateOfPurchase: new Date(),
-            idCourses: [order._id],
-          },
-        ],
+        courses: [{
+          dateOfPurchase: new Date(),
+          idCourses: [order._id],
+        }],
       });
       await studentCourse.save();
     }
   }
-
-  /**
-* Retrieves all purchased courses for a given student, applying role-based access.
-   */
   public async getAllCoursesForCurrentStudent(
     idStudent: string | Types.ObjectId,
     payloadUser: JWTPayloadType,
+    req: Request,
   ) {
     try {
       const studentId =
         payloadUser.userType === 'admin'
           ? idStudent
           : new Types.ObjectId(payloadUser.id);
+
       const student = await this.studentModel
         .findOne({ userId: studentId })
         .populate('courses.idCourses');
+
       if (!student) {
-        throw new NotFoundException('Student not found.');
+        throw new NotFoundException(getLangMessage(req, {
+          en: 'Student not found',
+          ar: 'الطالب غير موجود',
+        }));
       }
+
       return { success: true, data: student.courses };
     } catch (error) {
-      console.log('Error in Get All Courses For Student : ' + error);
-      throw new InternalServerErrorException('Some error occured!');
+      console.error('Error in getAllCoursesForCurrentStudent:', error);
+      throw new InternalServerErrorException(getLangMessage(req, {
+        en: 'An error occurred while fetching courses',
+        ar: 'حدث خطأ أثناء جلب الدورات',
+      }));
     }
   }
-  
-  /**
-   * Retrieves an existing student record or creates one if not found.
-   */
+
   public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
     let student = await this.studentModel.findOne({ userId });
     if (!student) {
@@ -209,6 +198,4 @@ export class StudentCourseService {
     }
     return student;
   }
-
-  
 }

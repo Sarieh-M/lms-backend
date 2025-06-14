@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, UseGuards, Query, Type, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, UseGuards, Query, Type, Req, UnauthorizedException, Res } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -14,7 +14,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ApiBearerAuth, ApiBody, ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ParseObjectIdPipe } from 'nestjs-object-id';
-
+import { Response,Request } from 'express';
 @ApiTags('Users')
 @Controller('api/user')
 export class UserController {
@@ -31,9 +31,11 @@ export class UserController {
   @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  public Register(@Body() createUserDto: RegisterUserDto) {
-    return this.userService.Register(createUserDto);
+  public Register(@Body() createUserDto: RegisterUserDto,@Req()req:Request) {
+    return this.userService.Register(createUserDto,req);
   }
+
+
 
   /**
    * Authenticate a user and return a JWT.
@@ -44,10 +46,26 @@ export class UserController {
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto) {
-    return this.userService.Login(loginUser);
+  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response) {
+    return this.userService.Login(loginUser,response);
   }
 
+  @Post('logout')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
+  @ApiResponse({ status: 200, description: 'User logged out successfully' })
+  logout(@Res({ passthrough: true })response:Response) {
+    return this.userService.logout(response);
+  }
+
+    @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+    @ApiResponse({ status: 200, description: 'New access token generated successfully' })
+    @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
+    @Post('refresh-token')
+  async refreshAccessToken(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    return await this.userService.refreshAccessToken(request,response);
+  }
   // ─────────────────────────────────────────────────────────────────────
   // Protected Endpoints: Current User & Password Reset
   // ─────────────────────────────────────────────────────────────────────
@@ -66,7 +84,7 @@ export class UserController {
     @Req() req?:Request,
   ) {
     const lang=(req as any).lang || 'en';
-    return this.userService.getCurrentUser(userPayload.id,lang);
+    return this.userService.getCurrentUser(userPayload.id,lang,req);
   }
 
   /**
@@ -121,8 +139,9 @@ export class UserController {
   public verifyEmail(
     @Param('id') id: Types.ObjectId,
     @Param('verificationToken') verificationToken: string,
+    @Req() req?:Request,
   ) {
-    return this.userService.verifyEmail(id, verificationToken);
+    return this.userService.verifyEmail(id, verificationToken,req);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -148,10 +167,10 @@ export class UserController {
     @Query('limit') limit = 10,
     @Query('search') search?: string,
     @Query('role') role?: string,
-     @Req() req?:Request,
+    @Req() req?:Request,
   ) {
     const lang=(req as any).lang || 'en';
-    return this.userService.getAllUsers(+page, +limit, search, role,lang);
+    return this.userService.getAllUsers(+page, +limit, search, role,lang,);
   }
 
   /**
@@ -172,8 +191,9 @@ export class UserController {
     @Query('id', ParseObjectIdPipe) id: Types.ObjectId,
     @CurrentUser() payload: JWTPayloadType,
     @Body() updateUserDto: UpdateUserDto,
+    @Req() req?:Request,
   ) {
-    return this.userService.update(id, payload, updateUserDto);
+    return this.userService.update(id, payload, updateUserDto,req);
   }
 
   /**
@@ -192,7 +212,8 @@ export class UserController {
   public remove(
     @CurrentUser() payload: JWTPayloadType,
     @Query('id', ParseObjectIdPipe) id: Types.ObjectId,
+    @Req() req?:Request,
   ) {
-    return this.userService.remove(id, payload);
+    return this.userService.remove(id, payload,req);
   }
 }
