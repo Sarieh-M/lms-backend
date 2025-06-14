@@ -29,18 +29,22 @@ export class StudentCourseService {
     @Inject(forwardRef(() => CourseService)) private readonly courseService: CourseService,
   ) {}
 
-  public async getStudent(userId: string | Types.ObjectId, req?: Request) {
-    const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+public async getStudent(userId: string | Types.ObjectId, req?: Request) {
+  const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
 
-    const student = await this.studentModel.findOne({ userId: _userId });
-    if (!student) {
-      throw new NotFoundException(getLangMessage(req, {
+  const student = await this.studentModel.findOne({ userId: _userId });
+
+  if (!student) {
+    throw new NotFoundException(
+      getLangMessage(req, {
         en: 'Student not found',
-        ar: 'لم يتم العثور على الطالب',
-      }));
-    }
-    return student;
+        ar: 'الطالب غير موجود',
+      }),
+    );
   }
+
+  return student;
+}
 
   public async AddStudent(userId: Types.ObjectId) {
     const student = await this.studentModel.create({ userId, courses: [] });
@@ -48,7 +52,7 @@ export class StudentCourseService {
     return student;
   }
 
-  public async getAllStudentViewCourses(
+public async getAllStudentViewCourses(
     category?: string,
     level?: string,
     primaryLanguage?: string,
@@ -97,48 +101,44 @@ export class StudentCourseService {
     };
   }
 
-  public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
+public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
     return await this.courseService.getCourseDetailsByID(id);
   }
 
-  public async checkCoursePurchaseInfo(
-    courseId: Types.ObjectId,
-    user: JWTPayloadType,
-    req: Request,
-  ) {
-    try {
-      const _userId = new Types.ObjectId(user.id);
-      const student = await this.studentModel.findOne({ userId: _userId });
+public async checkCoursePurchaseInfo(
+  courseId: Types.ObjectId,
+  user: JWTPayloadType,
+  req: Request,
+) {
+  const _userId = new Types.ObjectId(user.id);
+  const student = await this.studentModel.findOne({ userId: _userId });
 
-      if (!student) {
-        throw new NotFoundException(getLangMessage(req, {
-          en: 'Student not found',
-          ar: 'الطالب غير موجود',
-        }));
-      }
-
-      const alreadyPurchased = student.courses.some((course) =>
-        course.idCourses.includes(courseId),
-      );
-
-      return {
-        message: alreadyPurchased
-          ? getLangMessage(req, {
-              en: 'Course is already purchased by student',
-              ar: 'تم شراء هذه الدورة بالفعل من قبل الطالب',
-            })
-          : getLangMessage(req, {
-              en: 'No Data. This Course is not bought by this student',
-              ar: 'لا توجد بيانات. لم يقم الطالب بشراء هذه الدورة',
-            }),
-      };
-    } catch (err) {
-      console.error('Error in checkCoursePurchaseInfo:', err.message);
-      throw err;
-    }
+  if (!student) {
+    throw new NotFoundException(
+      getLangMessage(req, {
+        en: 'Student not found',
+        ar: 'الطالب غير موجود',
+      }),
+    );
   }
 
-  public async UpdateStudentCourses(order: HydratedDocument<Order>) {
+  const alreadyPurchased = student.courses.some((course) =>
+    course.idCourses.includes(courseId),
+  );
+
+  return {
+    message: getLangMessage(req, {
+      en: alreadyPurchased
+        ? 'Course already purchased by student'
+        : 'Course not purchased by this student',
+      ar: alreadyPurchased
+        ? 'تم شراء هذه الدورة مسبقًا'
+        : 'لم يقم الطالب بشراء هذه الدورة',
+    }),
+  };
+}
+
+public async UpdateStudentCourses(order: HydratedDocument<Order>) {
     let studentCourse = await this.studentModel.findOne({ userId: order.userId });
 
     if (studentCourse) {
@@ -159,39 +159,43 @@ export class StudentCourseService {
       await studentCourse.save();
     }
   }
-  public async getAllCoursesForCurrentStudent(
-    idStudent: string | Types.ObjectId,
-    payloadUser: JWTPayloadType,
-    req: Request,
-  ) {
-    try {
-      const studentId =
-        payloadUser.userType === 'admin'
-          ? idStudent
-          : new Types.ObjectId(payloadUser.id);
+public async getAllCoursesForCurrentStudent(
+  idStudent: string | Types.ObjectId,
+  payloadUser: JWTPayloadType,
+  req: Request,
+) {
+  try {
+    const studentId =
+      payloadUser.userType === 'admin'
+        ? idStudent
+        : new Types.ObjectId(payloadUser.id);
 
-      const student = await this.studentModel
-        .findOne({ userId: studentId })
-        .populate('courses.idCourses');
+    const student = await this.studentModel
+      .findOne({ userId: studentId })
+      .populate('courses.idCourses');
 
-      if (!student) {
-        throw new NotFoundException(getLangMessage(req, {
+    if (!student) {
+      throw new NotFoundException(
+        getLangMessage(req, {
           en: 'Student not found',
           ar: 'الطالب غير موجود',
-        }));
-      }
+        }),
+      );
+    }
 
-      return { success: true, data: student.courses };
-    } catch (error) {
-      console.error('Error in getAllCoursesForCurrentStudent:', error);
-      throw new InternalServerErrorException(getLangMessage(req, {
+    return { success: true, data: student.courses };
+  } catch (error) {
+    console.error('Error in getAllCoursesForCurrentStudent:', error);
+    throw new InternalServerErrorException(
+      getLangMessage(req, {
         en: 'An error occurred while fetching courses',
         ar: 'حدث خطأ أثناء جلب الدورات',
-      }));
-    }
+      }),
+    );
   }
+}
 
-  public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
+public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
     let student = await this.studentModel.findOne({ userId });
     if (!student) {
       student = await this.studentModel.create({ userId, courses: [] });

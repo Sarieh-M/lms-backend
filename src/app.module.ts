@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CheckoutModule } from './Paypal/paypal.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { AppController } from './app.controller';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   
@@ -23,6 +24,7 @@ import { AppController } from './app.controller';
     CheckoutModule,
     CourseProgressModule,
     CloudinaryModule,
+    MailModule
   ],
   controllers: [AppController],
   providers: [],

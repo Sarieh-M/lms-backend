@@ -95,8 +95,8 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @ApiBody({ description: 'Forgot Password DTO', type: ForgotPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset email sent' })
-  public forgotPassword(@Body() body: ForgotPasswordDto) {
-    return this.userService.sendRestPassword(body.email);
+  public forgotPassword(@Body() body: ForgotPasswordDto,@Req()req:Request) {
+    return this.userService.sendRestPassword(body.email,req);
   }
 
   /**
@@ -110,9 +110,10 @@ export class UserController {
   @ApiParam({ name: 'resetPasswordToken', type: String })
   public getResetPassword(
     @Param('id') id: Types.ObjectId,
-    @Param('resetPasswordToken') resetPasswordToken: string,
+    @Param('resetPasswordToken') resetPasswordToken: string
+    ,@Req()req:Request
   ) {
-    return this.userService.getRestPassword(id, resetPasswordToken);
+    return this.userService.getRestPassword(id, resetPasswordToken,req);
   }
 
   /**
@@ -120,9 +121,10 @@ export class UserController {
    * @body ResetPasswordDto
    */
   @Post('reset-password')
-  @ApiBody({ description: 'Reset Password DTO', type: ResetPasswordDto })@ApiResponse({ status: 200, description: 'Password reset successfully' })
-  public resetPassword(@Body() body: ResetPasswordDto) {
-    return this.userService.resetPassword(body);
+  @ApiBody({ description: 'Reset Password DTO', type: ResetPasswordDto })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  public resetPassword(@Body() body: ResetPasswordDto,@Req()req:Request) {
+    return this.userService.resetPassword(body,req);
   }
 
   // ─────────────────────────────────────────────────────────────────────

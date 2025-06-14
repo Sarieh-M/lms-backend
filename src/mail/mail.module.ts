@@ -1,40 +1,39 @@
-import { Module } from "@nestjs/common";
-import {MailerModule} from "@nestjs-modules/mailer";
-import { ConfigService } from "@nestjs/config";
-import {EjsAdapter} from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
-import { join } from "node:path";
-import { MailService } from "./mail.service";
-
+import { MailerModule } from '@nestjs-modules/mailer';
+import { Module } from '@nestjs/common';
+import { MailService } from './mail.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { join } from 'path';
+import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
 
 @Module({
-    imports: [
-        MailerModule.forRootAsync({
-            inject:[ConfigService],
-            useFactory: async (configService: ConfigService) => {
-                return{
-                    transport:{
-                        host:configService.get<string>('SMTP_HOST'),
-                        port:configService.get<number>('SMTP_PORT'),
-                        secure:false,
-                        auth:{
-                            user: configService.get<string>('SMTP_USERNAME'),
-                            pass:configService.get<string>('SMTP_PASSWORD'),
-                        }   
-                    },
-                    template:{
-                        dir: join(__dirname,'templates'),
-                        adapter:new EjsAdapter({
-                            inlineCssEnabled:true   
-                        }),
-                    }
-                }
-            }
-        })
-    ],
-    controllers: [],
-    providers: [MailService],
-    exports: [MailService],
+  imports: [
+    ConfigModule,
+    MailerModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: async (configService: ConfigService) => ({
+    transport: {
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // true if using 465
+      auth: {
+        user: 'mhabnoor75@gmail.com',
+    pass: 'grylxexibuiscxwa',
+      },
+    },
+    defaults: {
+      from: '"No Reply" <no-reply@yourapp.com>',
+    },
+    template: {
+      dir: join(__dirname, 'templates'),
+      adapter: new EjsAdapter(),
+      options: {
+        strict: false,
+      },
+    },
+  }),
+}),
+  ],
+  providers: [MailService],
+  exports: [MailService],
 })
-export class MailModule {
-    
-}
+export class MailModule {}

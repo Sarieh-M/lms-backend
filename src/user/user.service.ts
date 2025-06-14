@@ -35,17 +35,8 @@ export class UserService {
     private readonly jwtService: JwtService,
   ) {}
 
-  
-  // ────────────────────────────────────────────────────────
-  // 1) Registration & Authentication
-  // ────────────────────────────────────────────────────────
-
-    /**
-   * Register a new user and initiate email verification.
-   * Expects userName as { en: string; ar: string }
-   */
- public async Register(registerUserDto: RegisterUserDto, req: Request) {
-const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const { userName } = registerUserDto;
+    public async Register(registerUserDto: RegisterUserDto, req: Request) {
+  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const { userName } = registerUserDto;
 
   if (!userName || typeof userName !== 'string') {
     const msg = lang === 'ar'
@@ -57,16 +48,14 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
   // نعمل lowercase فقط
   registerUserDto.userName = userName.toLowerCase();
 
-  return await this.authProvider.Register(registerUserDto);
-}
-  
-    /**
-     * Authenticate a user and return a JWT access token.
-     */
+  return await this.authProvider.Register(registerUserDto,req);
+    }
+    //============================================================================
     public async Login(loginDto: LoginDto,response:Response,req:Request) {
       return await this.authProvider.Login(loginDto,response,req);
     }
-    async logout(response:Response) {
+    //============================================================================
+    public async logout(response:Response) {
       await response.clearCookie('refresh_token', {
         httpOnly: true,
         secure: true,
@@ -75,31 +64,23 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
       });
 
       return { message: 'Logged out successfully' };
-  }
-  public async refreshAccessToken(request:Request,response:Response){
+    }
+    //============================================================================
+    public async refreshAccessToken(request:Request,response:Response){
       return await this.authProvider.refreshAccessToken(request,response);
-  }
-  
-
-  // ────────────────────────────────────────────────────────
-  // 2) Current User Retrieval
-  // ────────────────────────────────────────────────────────
- /**
-   * Fetch the currently authenticated user's profile.
-   * @param id - MongoDB ObjectId of the user
-   * @param lang - 'en' | 'ar' to return username in selected language (default 'en')
-   */
-  //this one for course.servce (AddNewCourse)
- public async getCurrentUserDocument(id: Types.ObjectId,req:Request) {
+    }
+    //============================================================================
+    //this one for course.servce (AddNewCourse)
+    public async getCurrentUserDocument(id: Types.ObjectId,req:Request) {
 const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const user = await this.userModel.findById(id);
    if (!user) {
     const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
     throw new NotFoundException(msg);
   }
   return user;
-}
-// this one for all
- public async getCurrentUser(id: Types.ObjectId, lang: 'en' | 'ar' = 'en',req:Request) {
+    }
+    // this one for all
+    public async getCurrentUser(id: Types.ObjectId, lang: 'en' | 'ar' = 'en',req:Request) {
 const lang1 = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const user = await this.userModel.findById(id)
   if (!user) {
     const msg = lang1 === 'ar' ? 'المستخدم غير موجود' : 'User not found';
@@ -116,21 +97,9 @@ const lang1 = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar')
     profileImage:user.profileImage,
     age:user.age
   };
-}
-
-
-  // ────────────────────────────────────────────────────────
-  // 3) Admin-Only User Management
-  // ────────────────────────────────────────────────────────
- /**
-   * Retrieve all users in the system with pagination and optional filters.
-   * @param page current page (default 1)
-   * @param limit items per page (default 10)
-   * @param search search text for userName or email
-   * @param role filter by user role
-   * @param lang language to return userName in ('en' | 'ar')
-   */
- public async getAllUsers(
+    }
+    //============================================================================
+    public async getAllUsers(
   page: number = 1,
   limit: number = 10,
   search?: string,
@@ -174,15 +143,9 @@ const lang1 = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar')
     totalPages,
     data: usersWithLang,
   };
-}
-
-
-  /**
-   * Update a user's profile.
-   * Admins may update any user; non-admins may update only their own profile.
-   * Accepts userName as object { en: string, ar: string }
-   */
-  public async update(
+    }
+    //============================================================================
+    public async update(
     id: Types.ObjectId,
     currentUser: JWTPayloadType,
     updateUserDto: UpdateUserDto,
@@ -240,13 +203,9 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
     }
 
     return await userFromDB.save();
-  }
-
-  
-   /**
-   * Delete a user.
-   */
-  public async remove(
+    }
+    //============================================================================
+    public async remove(
     id: Types.ObjectId,
     payload: JWTPayloadType,
     req: Request
@@ -274,22 +233,8 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
 
     const msg = lang === 'ar' ? 'غير مسموح لك بحذف هذا المستخدم' : 'You are not allowed to delete this user';
     throw new ForbiddenException(msg);
-  }
-
-  
-    // ────────────────────────────────────────────────────────
-    // 4) Email Verification & Password Reset
-    // ────────────────────────────────────────────────────────
-  
-    /**
-     * Verify a newly registered user's email via token link.
-     * On success, marks the user as verified and creates a Student record if role=STUDENT.
-     *
-     * @param id                - ObjectId of the user
-     * @param verificationToken - token from verification email
-     * @returns success message
-     * @throws NotFoundException | BadRequestException on invalid token or user
-     */
+    }
+    //============================================================================
     public async verifyEmail(id: Types.ObjectId, verificationToken: string,req :Request): Promise<{ message: string }> {
 const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
       const userFromDB = await this.userModel.findById(id);
@@ -315,33 +260,17 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
       const msg = lang === 'ar' ? 'تم التحقق من البريد الإلكتروني بنجاح. يمكنك الآن تسجيل الدخول.' : 'Email verified successfully. You can now log in.';
       return { message: msg };
     }
-  
-    /**
-     * Send a password-reset link to the user's email.
-     * @param email - the user's registered email address
-     * @returns result from AuthProvider
-     */
-    public async sendRestPassword(email: string) {
-      return await this.authProvider.SendResetPasswordLink(email);
+    //============================================================================
+    public async sendRestPassword(email: string,req:Request) {
+      return await this.authProvider.SendResetPasswordLink(email,req);
     }
-  
-    /**
-     * Validate a password-reset token and user ID.
-     * @param id                  - ObjectId of the user
-     * @param resetPasswordToken  - token from reset email
-     * @returns result from AuthProvider
-     */
-    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,
-    ) {
-      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,);
+    //============================================================================
+    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,req:Request) {
+      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,req);
     }
-  
-    /**
-     * Complete the password reset using the provided DTO.
-     * @param body - ResetPasswordDto containing new password and token
-     * @returns result from AuthProvider
-     */
-    public async resetPassword(body: ResetPasswordDto) {
-      return await this.authProvider.ResetPassword(body);
+    //============================================================================
+    public async resetPassword(body: ResetPasswordDto,req:Request) {
+      return await this.authProvider.ResetPassword(body,req);
     }
+    //============================================================================
   }
