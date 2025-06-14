@@ -7,8 +7,10 @@ import { CourseProgressModule } from './course-progress/course-progress.module';
 import { ConfigModule } from '@nestjs/config';
 import { CheckoutModule } from './Paypal/paypal.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { AppController } from './app.controller';
 
 @Module({
+  
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -22,7 +24,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     CourseProgressModule,
     CloudinaryModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [],
 })
 export class AppModule {}

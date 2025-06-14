@@ -7,7 +7,7 @@ export class LoginDto{
     @IsNotEmpty({message: 'User Email is required'})
     @MaxLength(250,{ message: 'Password must not exceed 250 characters' })
     @IsString({message:'User Email must be a string'})
-    @IsEmail({},{message:'User Email must be a valid email'})
+    
     @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/ ,{message:'User Email must be a valid email'})
     @ApiProperty({
         description: 'The email of the user',

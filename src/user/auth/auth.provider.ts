@@ -54,42 +54,65 @@ export class AuthProvider {
  * @param loginDto Data for login user 
  * @returns jwt {access token}
  */
-    public async Login(loginDto:LoginDto,response:Response){
-        const {userEmail,password} = loginDto;
-        const userFromDB = await this.userModul.findOne({userEmail});
-        if(!userFromDB){
-            throw new BadRequestException('Invalid Email or Password');
-        }
-        const isPasswordValid = await bcrypt.compare(password,userFromDB.password);
-        if(!isPasswordValid){
-            throw new BadRequestException('Invalid Email or Password');
-        }
-        if(!userFromDB.isAccountverified){
-            let verficationToken = userFromDB.verificationToken;
-            if(!verficationToken){
-                userFromDB.verificationToken = await randomBytes(32).toString('hex');
-                const result = await userFromDB.save(); 
-                verficationToken = result.verificationToken;
-            }
-            const link = await this.generateLinke(userFromDB._id,verficationToken);
-            await this.mailService.sendVerifyEmailTemplate(userEmail,link);
-            return {message:"verification token has been sent to your email,Please verify your email to continue"};
-        }
-        const accessToken = await this.generateJWT({id:userFromDB._id, userType:userFromDB.role});
-        const refreshToken = await this.generateRefreshToken({id:userFromDB._id, userType:userFromDB.role});
+public async Login(loginDto: LoginDto, response: Response, req: Request) {
+    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
 
-        // ✅ Set refresh token in cookie
-        response.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: true, // true for HTTPS
-        sameSite: "strict",
-        path: '/api/user/refresh-token', // Only sent when requesting this endpoint
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
-        });
+    const { userEmail, password } = loginDto;
 
-        await this.mailService.sendLoginEmail(userEmail);
-        return {AccessToken:accessToken};
+    // 1. التحقق من أن البريد مكتوب كصيغة إيميل
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+        const msg = lang === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة' : 'Invalid email format';
+        throw new BadRequestException(msg);
     }
+
+    // 2. التحقق إذا كان المستخدم موجود
+    const userFromDB = await this.userModul.findOne({ userEmail });
+    if (!userFromDB) {
+        const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
+        throw new BadRequestException(msg);
+    }
+
+    // 3. التحقق من صحة كلمة المرور
+    const isPasswordValid = await bcrypt.compare(password, userFromDB.password);
+    if (!isPasswordValid) {
+        const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
+        throw new BadRequestException(msg);
+    }
+
+    // 4. التحقق من تفعيل الحساب
+    if (!userFromDB.isAccountverified) {
+        let verficationToken = userFromDB.verificationToken;
+        if (!verficationToken) {
+            userFromDB.verificationToken = await randomBytes(32).toString('hex');
+            const result = await userFromDB.save();
+            verficationToken = result.verificationToken;
+        }
+
+        const link = await this.generateLinke(userFromDB._id, verficationToken);
+        await this.mailService.sendVerifyEmailTemplate(userEmail, link);
+
+        const msg = lang === 'ar'
+            ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى التحقق لإكمال التسجيل'
+            : 'Verification token has been sent to your email, please verify to continue';
+        return { message: msg };
+    }
+
+    // 5. إنشاء الرموز وإعداد الكوكيز
+    const accessToken = await this.generateJWT({ id: userFromDB._id, userType: userFromDB.role });
+    const refreshToken = await this.generateRefreshToken({ id: userFromDB._id, userType: userFromDB.role });
+
+    response.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        path: '/api/user/refresh-token',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    await this.mailService.sendLoginEmail(userEmail);
+    return { AccessToken: accessToken };
+}
 
     public async refreshAccessToken(request:Request,response:Response){
         const refreshToken = request.cookies['refresh_token'];

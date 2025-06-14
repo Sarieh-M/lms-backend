@@ -46,8 +46,8 @@ export class UserController {
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response) {
-    return this.userService.Login(loginUser,response);
+  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req()req:Request) {
+    return this.userService.Login(loginUser,response,req);
   }
 
   @Post('logout')
