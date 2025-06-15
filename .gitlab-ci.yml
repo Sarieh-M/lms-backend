@@ -1,9 +1,0 @@
-stages:
-  - deploy
-
-sync_to_render:
-  stage: deploy
-  script:
-    - echo "Deploying to Render..."
-  only:
-    - main 
