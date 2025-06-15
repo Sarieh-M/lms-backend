@@ -5,6 +5,7 @@
   "scripts": {
     "start": "nest start",
     "start:dev": "nest start --watch",
+    "start:pord":"node dist/main.ts",
     "build": "nest build",
     "test": "jest",
     "postbuild": "cp -r src/mail/templates dist/src/mail/"
