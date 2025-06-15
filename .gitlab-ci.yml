@@ -9,4 +9,4 @@ sync_to_github:
     - git remote add github https://$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$GITHUB_REPO.git
     - git push github HEAD:main --force
   only:
-    - main
+    - main 
