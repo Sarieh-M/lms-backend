@@ -5,10 +5,10 @@
   "scripts": {
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:pord":"node dist/main.ts",
+    "start:pord": "node dist/main.ts",
     "build": "nest build",
     "test": "jest",
-    "postbuild": "cp -r src/mail/templates dist/src/mail/"
+    "postbuild": "cpx \"src/mail/templates/**/*\" dist/src/mail"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -19,7 +19,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-express": "^10.4.17",
-    "@nestjs/swagger": "^7.1.13",
+    "@nestjs/swagger": "^11.2.0",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@typegoose/auto-increment": "^4.13.0",
     "@typegoose/typegoose": "^12.14.0",
@@ -41,7 +41,7 @@
     "nestjs-object-id": "^2.0.2",
     "nestjs-paypal-payouts": "^1.0.3",
     "nodemailer": "^7.0.3",
-    "reflect-metadata": "^0.2.0",
+    "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1",
     "streamifier": "^0.1.1",
     "typeorm": "^0.3.21"
