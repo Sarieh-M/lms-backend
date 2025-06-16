@@ -5,8 +5,8 @@ import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/user/decorator/user-role.decorator';
-import { AuthRolesGuard } from 'src/user/Guards/auth-role.guard';
-import { AuthGuard } from 'src/user/Guards/auth.guard';
+import { AuthRolesGuard } from 'src/user/guards/auth-role.guard';
+import { AuthGuard } from 'src/user/guards/auth.guard';
 import { Request } from 'express';
 
 @ApiTags('Student Course')

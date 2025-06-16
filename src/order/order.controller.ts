@@ -5,7 +5,7 @@ import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { Ids, JWTPayloadType } from 'utilitis/types';
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { UserRole } from 'utilitis/enums';
-import { AuthRolesGuard } from 'src/user/Guards/auth-role.guard';
+import { AuthRolesGuard } from 'src/user/guards/auth-role.guard';
 import { Types } from 'mongoose';
 import { Request } from 'express';
 

@@ -9,11 +9,11 @@ import { CourseModule } from 'src/course/course.module';
 import { StudentCourseModule } from 'src/student-course/student-course.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { AuthGuard } from 'src/user/Guards/auth.guard';
+import { AuthGuard } from 'src/user/guards/auth.guard';
 import { Student, StudentCourseSchema } from 'src/student-course/schemas/student-course.schema';
-import { AuthRolesGuard } from 'src/user/Guards/auth-role.guard';
+import { AuthRolesGuard } from 'src/user/guards/auth-role.guard';
 import { UserModule } from 'src/user/user.module';
-import { Course, CourseSchema } from 'src/course/Schemas/course.schema';
+import { Course, CourseSchema } from 'src/course/schemas/course.schema';
 
 @Module({
   imports:[
