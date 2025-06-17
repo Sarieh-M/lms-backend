@@ -5,8 +5,8 @@ import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
 import { Types } from 'mongoose';
 import { ApiOperation, ApiResponse, ApiTags,ApiParam, ApiQuery } from '@nestjs/swagger';
-import { AuthGuard } from 'src/user/guards/auth.guard';
-import { AuthRolesGuard } from 'src/user/guards/auth-role.guard';
+import { AuthGuard } from 'src/user/guard/auth.guard';
+import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { Request } from 'express';
 @ApiTags('Course Progress')

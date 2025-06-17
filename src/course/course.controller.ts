@@ -4,13 +4,13 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { UserRole } from 'utilitis/enums';
-import { AuthRolesGuard } from 'src/user/guards/auth-role.guard';
+import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
 import { Types } from 'mongoose';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LectureDTO } from './dto/lecture-course.dto';
-import { AuthGuard } from 'src/user/guards/auth.guard';
+import { AuthGuard } from 'src/user/guard/auth.guard';
 import { Request } from 'express';
 
 @ApiTags('Courses')
