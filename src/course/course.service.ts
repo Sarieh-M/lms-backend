@@ -65,7 +65,7 @@ public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.
 
     return newCourse;
   } catch (error) {
-    const message = lang === 'ar' ? 'حدث خطأ أثناء إنشاء الدورة' : 'An error occurred while creating the course';
+    const message = lang === 'ar' ? ' حدث خطأ أثناء إنشاء الدورة' : 'An error occurred while creating the course';
     throw new InternalServerErrorException(message);
   }
 }
