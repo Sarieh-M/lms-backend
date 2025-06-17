@@ -25,7 +25,7 @@ public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.
 
   const user = await this.userService.getCurrentUserDocument(instructorId, req);
   if (!user) {
-    const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+    const message = lang === 'ar' ? '  المستخدم غير موجود' : 'User not found';
     throw new NotFoundException(message);
   }
 
