@@ -4,39 +4,42 @@ import * as paypal from '@paypal/checkout-server-sdk';
 
 @Injectable()
 export class PaypalService {
-  private client: paypal.core.PayPalHttpClient;
+  private readonly client: paypal.core.PayPalHttpClient;
 
   constructor(private readonly configService: ConfigService) {
-
     const clientId = this.configService.get<string>('PAYPAL_CLIENT_ID');
     const clientSecret = this.configService.get<string>('PAYPAL_CLIENT_SECRET');
-    if (!clientId || !clientSecret) {
-      throw new Error('Missing PayPal configuration in environment');
+    const baseApiUrl = this.configService.get<string>('PAYPAL_BASE_API');
+
+    if (!clientId || !clientSecret || !baseApiUrl) {
+      throw new Error('Missing PayPal configuration in environment variables.');
     }
 
+    // Custom PayPal Environment
+    class CustomEnvironment extends paypal.core.PayPalEnvironment {
+      constructor() {
+        super(clientId, clientSecret);
+      }
+      public baseUrl(): string {
+        return baseApiUrl;
+      }
+    }
 
-    const environment = new paypal.core.SandboxEnvironment(clientId, clientSecret);
+    const environment = new CustomEnvironment();
     this.client = new paypal.core.PayPalHttpClient(environment);
   }
 
-  /**
-   * Creates a PayPal order.
-   * @param paymentData - object matching PayPal OrdersCreate API schema
-   * @returns the created order result
-   */
-  public async createPayment(paymentData: any): Promise<any> {
+  public async createPayment(paymentData: paypal.orders.OrderRequest): Promise<paypal.orders.Order> {
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody(paymentData);
+
     try {
-      const request = new paypal.orders.OrdersCreateRequest();
-      request.prefer('return=representation');
-      request.requestBody(paymentData);
       const response = await this.client.execute(request);
       return response.result;
     } catch (err) {
-      console.error('Error creating PayPal payment:', err);
-      throw new InternalServerErrorException('Failed to create PayPal payment');
+      console.error(' Error creating PayPal payment:', err);
+      throw new InternalServerErrorException('PayPal payment creation failed.');
     }
   }
 }
-
-
-

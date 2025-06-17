@@ -38,7 +38,6 @@
     "mongoose-sequence": "^6.0.1",
     "multer": "^2.0.1",
     "nestjs-object-id": "^2.0.2",
-    "nestjs-paypal-payouts": "^1.0.3",
     "nodemailer": "^7.0.3",
     "nopt": "^8.1.0",
     "reflect-metadata": "^0.2.0",
