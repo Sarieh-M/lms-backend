@@ -3,10 +3,10 @@ import { CourseService } from './course.service';
 import { CourseController } from './course.controller';
 import { DatabaseModule } from 'src/db/database.module';
 import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
-import { Course, CourseSchema } from './schemas/course.schema';
+import { Course, CourseSchema } from './schema/course.schema';
 import { UserModule } from 'src/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
-import { Lecture, LectureSchema } from './schemas/lecture.schema';
+import { Lecture, LectureSchema } from './schema/lecture.schema';
 import {
   AutoIncrementID,
   AutoIncrementIDOptions,

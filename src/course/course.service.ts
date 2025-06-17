@@ -3,10 +3,10 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { HydratedDocument, Model, Types } from 'mongoose';
-import { Course } from './schemas/course.schema';
+import { Course } from './schema/course.schema';
 import { UserService } from 'src/user/user.service';
 import { LectureDTO } from './dto/lecture-course.dto';
-import { Lecture } from './schemas/lecture.schema';
+import { Lecture } from './schema/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
 import { Request } from 'express';
 

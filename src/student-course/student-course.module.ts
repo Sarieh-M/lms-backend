@@ -8,7 +8,7 @@ import { Student, StudentCourseSchema } from './schemas/student-course.schema';
 import { CourseModule } from 'src/course/course.module';
 import { UserModule } from 'src/user/user.module';
 import { User, UserSchema } from 'src/user/schemas/user.schema';
-import { Course, CourseSchema } from 'src/course/schemas/course.schema';
+import { Course, CourseSchema } from 'src/course/schema/course.schema';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
 import { LectureProgres, LectureProgresSchema } from 'src/course-progress/schemas/lecture-progress.schema';
 
