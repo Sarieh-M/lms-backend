@@ -35,7 +35,6 @@
     "helmet": "^8.1.0",
     "install": "^0.13.0",
     "mongoose": "8.15.2",
-    "mongoose-auto-increment": "^5.0.1",
     "mongoose-sequence": "^6.0.1",
     "multer": "^2.0.1",
     "nestjs-object-id": "^2.0.2",
