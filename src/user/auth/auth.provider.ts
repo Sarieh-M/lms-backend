@@ -205,15 +205,11 @@ export class AuthProvider {
     }
     //============================================================================
     public async SendResetPasswordLink(userEmail: string, lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en'; 
-
-    const userFromDB = await this.userModul.findOne({ email: userEmail });
-
+        const cleanedEmail = userEmail.trim().toLowerCase();
+    const userFromDB = await this.userModul.findOne({ userEmail: cleanedEmail });
     if (!userFromDB) {
-        const msg = lang === 'ar'
-            ? 'المستخدم غير موجود'
-            : 'User not found';
-        throw new BadRequestException(msg);
+    const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+    throw new BadRequestException(msg);
     }
 
     userFromDB.resetPasswordToken = await randomBytes(32).toString('hex');

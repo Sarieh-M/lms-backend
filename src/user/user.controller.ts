@@ -103,13 +103,16 @@ export class UserController {
    * @param resetPasswordToken - token sent via email
    */
   @Get('reset-password/:id/:resetPasswordToken')
-  @ApiExcludeEndpoint()
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'resetPasswordToken', type: String })
-  public getResetPassword(@Param('id') id: Types.ObjectId,@Param('resetPasswordToken') resetPasswordToken: string,@Req()req:any
+  public getResetPassword(
+    @Param('id') id: string,
+    @Param('resetPasswordToken') resetPasswordToken: string,
+    @Req() req: any
   ) {
-    const lang = req.lang||'en';
-    return this.userService.getRestPassword(id, resetPasswordToken,lang);
+    const lang = req.lang || 'en';
+    const objectId = new Types.ObjectId(id);
+    return this.userService.getRestPassword(objectId, resetPasswordToken, lang);
   }
 
   /**
