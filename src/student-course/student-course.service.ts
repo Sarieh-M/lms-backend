@@ -8,8 +8,7 @@ import { Order } from '../order/schema/order.schema';
 import { Course } from '../course/schemas/course.schema';
 import { Request } from 'express';
 
-function getLangMessage(req: Request, messages: { ar: string; en: string }) {
-  const lang = req.headers['lang'] === 'ar' ? 'ar' : 'en';
+function getLangMessage(lang: 'en' | 'ar' = 'en', messages: { ar: string; en: string }) {
   return messages[lang];
 }
 
@@ -29,14 +28,15 @@ export class StudentCourseService {
     @Inject(forwardRef(() => CourseService)) private readonly courseService: CourseService,
   ) {}
 
-public async getStudent(userId: string | Types.ObjectId, req?: Request) {
+public async getStudent(userId: string | Types.ObjectId, lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
   const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
 
   const student = await this.studentModel.findOne({ userId: _userId });
 
   if (!student) {
     throw new NotFoundException(
-      getLangMessage(req, {
+      getLangMessage(lang, {
         en: 'Student not found',
         ar: 'الطالب غير موجود',
       }),
@@ -108,14 +108,15 @@ public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
 public async checkCoursePurchaseInfo(
   courseId: Types.ObjectId,
   user: JWTPayloadType,
-  req: Request,
+  lang: 'en' | 'ar' = 'en'
 ) {
+  lang=['en','ar'].includes(lang)?lang:'en';
   const _userId = new Types.ObjectId(user.id);
   const student = await this.studentModel.findOne({ userId: _userId });
 
   if (!student) {
     throw new NotFoundException(
-      getLangMessage(req, {
+      getLangMessage(lang, {
         en: 'Student not found',
         ar: 'الطالب غير موجود',
       }),
@@ -127,7 +128,7 @@ public async checkCoursePurchaseInfo(
   );
 
   return {
-    message: getLangMessage(req, {
+    message: getLangMessage(lang, {
       en: alreadyPurchased
         ? 'Course already purchased by student'
         : 'Course not purchased by this student',
@@ -162,8 +163,9 @@ public async UpdateStudentCourses(order: HydratedDocument<Order>) {
 public async getAllCoursesForCurrentStudent(
   idStudent: string | Types.ObjectId,
   payloadUser: JWTPayloadType,
-  req: Request,
+   lang: 'en' | 'ar' = 'en'
 ) {
+  lang=['en','ar'].includes(lang)?lang:'en';
   try {
     const studentId =
       payloadUser.userType === 'admin'
@@ -176,7 +178,7 @@ public async getAllCoursesForCurrentStudent(
 
     if (!student) {
       throw new NotFoundException(
-        getLangMessage(req, {
+        getLangMessage(lang, {
           en: 'Student not found',
           ar: 'الطالب غير موجود',
         }),
@@ -187,7 +189,7 @@ public async getAllCoursesForCurrentStudent(
   } catch (error) {
     console.error('Error in getAllCoursesForCurrentStudent:', error);
     throw new InternalServerErrorException(
-      getLangMessage(req, {
+      getLangMessage(lang, {
         en: 'An error occurred while fetching courses',
         ar: 'حدث خطأ أثناء جلب الدورات',
       }),

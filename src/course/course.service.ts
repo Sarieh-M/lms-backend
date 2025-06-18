@@ -8,7 +8,6 @@ import { UserService } from 'src/user/user.service';
 import { LectureDTO } from './dto/lecture-course.dto';
 import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
-import { Request } from 'express';
 
 
 @Injectable()

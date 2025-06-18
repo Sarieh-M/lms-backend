@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Res, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
@@ -25,17 +25,14 @@ export class AuthProvider {
     ){}
 
 
-    public async Register(registerUserDto: RegisterUserDto, req: Request) {
-  const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
-
-  const { userEmail, password, userName } = registerUserDto;
-
-  const errors = [];
-
-  // التحقق من صحة البريد الإلكتروني
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail);
-  if (!isEmailValid) {
-    errors.push({
+    public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
+        lang=['en','ar'].includes(lang)?lang:'en'; 
+        const { userEmail, password, userName } = registerUserDto;
+        const errors = [];
+        // التحقق من صحة البريد الإلكتروني
+        const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail);
+        if (!isEmailValid) {
+        errors.push({
       field: 'userEmail',
       message: lang === 'ar'
         ? 'البريد الإلكتروني غير صالح'
@@ -103,33 +100,30 @@ export class AuthProvider {
   return { message: msg };
     }
     //============================================================================
-    public async Login(loginDto: LoginDto, response: Response, req: Request) {
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
-
+    public async Login(loginDto: LoginDto, response: Response, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en';
     const { userEmail, password } = loginDto;
-
-    // 1. التحقق من أن البريد مكتوب كصيغة إيميل
+    // التحقق من أن البريد مكتوب كصيغة إيميل
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail)) {
         const msg = lang === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة' : 'Invalid email format';
         throw new BadRequestException(msg);
     }
-
-    // 2. التحقق إذا كان المستخدم موجود
+    //  التحقق إذا كان المستخدم موجود
     const userFromDB = await this.userModul.findOne({ userEmail });
     if (!userFromDB) {
         const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
         throw new BadRequestException(msg);
     }
 
-    // 3. التحقق من صحة كلمة المرور
+    //  التحقق من صحة كلمة المرور
     const isPasswordValid = await bcrypt.compare(password, userFromDB.password);
     if (!isPasswordValid) {
         const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
         throw new BadRequestException(msg);
     }
 
-    // 4. التحقق من تفعيل الحساب
+    //  التحقق من تفعيل الحساب
     if (!userFromDB.isAccountverified) {
         let verficationToken = userFromDB.verificationToken;
         if (!verficationToken) {
@@ -147,7 +141,7 @@ export class AuthProvider {
         return { message: msg };
     }
 
-    // 5. إنشاء الرموز وإعداد الكوكيز
+    //  إنشاء الرموز وإعداد الكوكيز
     const accessToken = await this.generateJWT({ id: userFromDB._id, userType: userFromDB.role });
     const refreshToken = await this.generateRefreshToken({ id: userFromDB._id, userType: userFromDB.role });
 
@@ -210,8 +204,8 @@ export class AuthProvider {
     }
     }
     //============================================================================
-    public async SendResetPasswordLink(userEmail: string, req: Request) {
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+    public async SendResetPasswordLink(userEmail: string, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en'; 
 
     const userFromDB = await this.userModul.findOne({ email: userEmail });
 
@@ -237,8 +231,8 @@ export class AuthProvider {
     };
     }
     //============================================================================
-    public async GetResetPasswordLink(userId: Types.ObjectId, resetPassordToken: string, req: Request) {
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+    public async GetResetPasswordLink(userId: Types.ObjectId, resetPassordToken: string, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en'; 
 
     const userFromDB = await this.userModul.findOne({ _id: userId }); // استخدم _id بدل id
 
@@ -259,8 +253,8 @@ export class AuthProvider {
     return { message: successMsg };
     }
     //============================================================================
-    public async ResetPassword(resetPasswordDto: ResetPasswordDto, req: Request) {
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
+    public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en'; 
     const { userEmail, newPassword, RestPasswordToken } = resetPasswordDto;
 
     const userFromDB = await this.userModul.findOne({ userEmail });

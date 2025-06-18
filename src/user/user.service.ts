@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Body, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,7 +10,6 @@ import { JWTPayloadType } from 'utilitis/types';
 import { UserRole } from 'utilitis/enums';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { StudentCourseService } from 'src/student-course/student-course.service';
-import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 
 @Injectable()
@@ -32,27 +31,27 @@ export class UserService {
     private readonly userModel: Model<User>,
     private readonly authProvider: AuthProvider,
     private readonly studentService: StudentCourseService,
-    private readonly jwtService: JwtService,
   ) {}
 
-    public async Register(registerUserDto: RegisterUserDto, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const { userName } = registerUserDto;
-
-  if (!userName || typeof userName !== 'string') {
-    const msg = lang === 'ar'
-      ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
-      : 'Username is required and must be a string';
+    public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en'; 
+    const { userName } = registerUserDto;
+    if (!userName || typeof userName !== 'string') {
+      const msg = lang === 'ar'
+        ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
+        : 'Username is required and must be a string';
     throw new BadRequestException(msg);
   }
 
   // نعمل lowercase فقط
   registerUserDto.userName = userName.toLowerCase();
 
-  return await this.authProvider.Register(registerUserDto,req);
+  return await this.authProvider.Register(registerUserDto,lang);
     }
     //============================================================================
-    public async Login(loginDto: LoginDto,response:Response,req:Request) {
-      return await this.authProvider.Login(loginDto,response,req);
+    public async Login(loginDto: LoginDto,response:Response,lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
+      return await this.authProvider.Login(loginDto,response,lang);
     }
     //============================================================================
     public async logout(response:Response) {
@@ -72,7 +71,8 @@ export class UserService {
     //============================================================================
     //this one for course.servce (AddNewCourse)
     public async getCurrentUserDocument(id: Types.ObjectId,lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en';  const user = await this.userModel.findById(id);
+     lang=['en','ar'].includes(lang)?lang:'en';  
+    const user = await this.userModel.findById(id);
     if (!user) {
     const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
     throw new NotFoundException(msg);
@@ -80,11 +80,12 @@ export class UserService {
     return user;
     }
     // this one for all
-    public async getCurrentUser(id: Types.ObjectId, lang: 'en' | 'ar' = 'en',req:Request) {
-const lang1 = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const user = await this.userModel.findById(id)
-  if (!user) {
-    const msg = lang1 === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-    throw new NotFoundException(msg);
+    public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
+      const user = await this.userModel.findById(id)
+      if (!user) {
+        const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+        throw new NotFoundException(msg);
   }
 
   return {
@@ -99,59 +100,41 @@ const lang1 = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar')
   };
     }
     //============================================================================
-    public async getAllUsers(
-  page: number = 1,
-  limit: number = 10,
-  search?: string,
-  role?: string,
-  lang: 'en' | 'ar' = 'en',
-) {
-  const query: any = {};
-
-  if (search) {
-    query.$or = [
-      { [`userName.${lang}`]: { $regex: search, $options: 'i' } },
-      { userEmail: { $regex: search, $options: 'i' } },
-    ];
-  }
-
-  if (role) {
-    query.role = role;
-  }
-
-  const totalUsers = await this.userModel.countDocuments(query);
-  const totalPages = Math.ceil(totalUsers / limit);
-
-  const users = await this.userModel
-    .find(query)
-    .select('userName userEmail role profileImage enrolledCourses gender age')
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
-
-  const usersWithLang = users.map((u) => ({
-    ...u,
-    userName: u.userName,
-    role: this.roleTranslations[u.role]?.[lang] || u.role,
-    gender: this.genderTranslations[u.gender]?.[lang] || u.gender,
-  }));
-
-  return {
-    success: true,
-    totalUsers,
-    currentPage: page,
-    totalPages,
-    data: usersWithLang,
-  };
+    public async getAllUsers(page: number = 1,limit: number = 10,search?: string,role?: string,lang: 'en' | 'ar' = 'en',) {
+        lang=['en','ar'].includes(lang)?lang:'en';
+        const query: any = {};
+        if (search) {
+          query.$or = [
+            { [`userName.${lang}`]: { $regex: search, $options: 'i' } },
+            { userEmail: { $regex: search, $options: 'i' } },
+          ];
+        }
+        if (role) {
+          query.role = role;
+        }
+        const totalUsers = await this.userModel.countDocuments(query);
+        const totalPages = Math.ceil(totalUsers / limit);
+        const users = await this.userModel
+          .find(query)
+          .select('userName userEmail role profileImage enrolledCourses gender age')
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean();
+        const usersWithLang = users.map((u) => ({...u,
+          userName: u.userName,
+          role: this.roleTranslations[u.role]?.[lang] || u.role,
+          gender: this.genderTranslations[u.gender]?.[lang] || u.gender,}));
+         return {success: true,totalUsers,currentPage: page,totalPages,data: usersWithLang,};
     }
     //============================================================================
     public async update(
     id: Types.ObjectId,
     currentUser: JWTPayloadType,
     updateUserDto: UpdateUserDto,
-    req:Request
+   lang: 'en' | 'ar' = 'en'
   ): Promise<User> {
-const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+    lang=['en','ar'].includes(lang)?lang:'en';
+
     // Only admins or the user themselves can update
     if (
       currentUser.userType !== UserRole.ADMIN &&
@@ -208,9 +191,10 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
     public async remove(
     id: Types.ObjectId,
     payload: JWTPayloadType,
-    req: Request
+    lang: 'en' | 'ar' = 'en'
   ): Promise<{ message: string }> {
-const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';    if (!Types.ObjectId.isValid(id)) {
+      lang=['en','ar'].includes(lang)?lang:'en';
+      if (!Types.ObjectId.isValid(id)) {
       const msg = lang === 'ar' ? 'معرف المستخدم غير صالح' : 'Invalid user ID';
       throw new BadRequestException(msg);
     }
@@ -235,8 +219,8 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
     throw new ForbiddenException(msg);
     }
     //============================================================================
-    public async verifyEmail(id: Types.ObjectId, verificationToken: string,req :Request): Promise<{ message: string }> {
-const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+    public async verifyEmail(id: Types.ObjectId, verificationToken: string,lang: 'en' | 'ar' = 'en'): Promise<{ message: string }> {
+      lang=['en','ar'].includes(lang)?lang:'en';
       const userFromDB = await this.userModel.findById(id);
       if (!userFromDB) {const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
       throw new NotFoundException(msg);}
@@ -261,16 +245,19 @@ const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') 
       return { message: msg };
     }
     //============================================================================
-    public async sendRestPassword(email: string,req:Request) {
-      return await this.authProvider.SendResetPasswordLink(email,req);
+    public async sendRestPassword(email: string,lang: 'en' | 'ar' = 'en') {
+            lang=['en','ar'].includes(lang)?lang:'en';
+      return await this.authProvider.SendResetPasswordLink(email,lang);
     }
     //============================================================================
-    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,req:Request) {
-      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,req);
+    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,lang: 'en' | 'ar' = 'en') {
+            lang=['en','ar'].includes(lang)?lang:'en';
+      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,lang);
     }
     //============================================================================
-    public async resetPassword(body: ResetPasswordDto,req:Request) {
-      return await this.authProvider.ResetPassword(body,req);
+    public async resetPassword(body: ResetPasswordDto,lang: 'en' | 'ar' = 'en') {
+            lang=['en','ar'].includes(lang)?lang:'en';
+      return await this.authProvider.ResetPassword(body,lang);
     }
     //============================================================================
   }

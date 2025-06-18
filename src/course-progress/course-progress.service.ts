@@ -8,10 +8,8 @@ import { LectureProgres } from './schemas/lecture-progress.schema';
 import { CourseService } from 'src/course/course.service';
 import { StudentCourseService } from 'src/student-course/student-course.service';
 import { Student } from 'src/student-course/schemas/student-course.schema';
-import { Request } from 'express';
 
-function getLangMessage(req: Request, messages: { ar: string; en: string }) {
-  const lang = req.headers['lang'] === 'ar' ? 'ar' : 'en';
+function getLangMessage(lang: 'en' | 'ar' = 'en', messages: { ar: string; en: string }) {
   return messages[lang];
 }
 
@@ -29,9 +27,11 @@ export class CourseProgressService {
  public async markLectureAsViewed(
   dto: CreateCourseProgressDto,
   userPayload: JWTPayloadType,
-  req: Request,
+  lang: 'en' | 'ar' = 'en'
 ): Promise<CourseProgress> {
+  lang=['en','ar'].includes(lang)?lang:'en';
   try {
+    
     const { lectureId, courseId } = dto;
 
     await this.courseService.getCourseDetailsByID(courseId);
@@ -104,7 +104,7 @@ export class CourseProgressService {
     return progress;
   } catch (err) {
     console.error('Error in markLectureAsViewed:', err.message);
-    throw new InternalServerErrorException(getLangMessage(req, {
+    throw new InternalServerErrorException(getLangMessage(lang, {
       en: 'Could not mark lecture as viewed',
       ar: 'تعذر تسجيل مشاهدة المحاضرة',
     }));
@@ -116,8 +116,9 @@ public async getCurrentCourseProgress(
   currentUser: JWTPayloadType,
   page: number = 1,
   limit: number = 10,
-  req: Request,
+  lang: 'en' | 'ar' = 'en'
 ): Promise<any> {
+  lang=['en','ar'].includes(lang)?lang:'en';
   try {
     page = Math.max(1, page);
     limit = Math.min(Math.max(1, limit), 100);
@@ -128,7 +129,7 @@ public async getCurrentCourseProgress(
     if (!purchased) {
       return {
         isPurchased: false,
-        message: getLangMessage(req, {
+        message: getLangMessage(lang, {
           en: 'You need to purchase this course to access it.',
           ar: 'يجب عليك شراء هذه الدورة للوصول إليها.',
         }),
@@ -139,7 +140,7 @@ public async getCurrentCourseProgress(
 
     const courseDetails = await this.courseService.getCourseDetailsByID(courseId);
     if (!courseDetails) {
-      throw new NotFoundException(getLangMessage(req, {
+      throw new NotFoundException(getLangMessage(lang, {
         en: 'Course not found',
         ar: 'لم يتم العثور على الدورة',
       }));
@@ -147,7 +148,7 @@ public async getCurrentCourseProgress(
 
     if (!progress || progress.LectureProgres.length === 0) {
       return {
-        message: getLangMessage(req, {
+        message: getLangMessage(lang, {
           en: 'No progress found, you can start watching the course.',
           ar: 'لم يتم العثور على تقدم، يمكنك البدء بمشاهدة الدورة.',
         }),
@@ -181,7 +182,7 @@ public async getCurrentCourseProgress(
     };
   } catch (err) {
     console.error('Error in getCurrentCourseProgress:', err.message);
-    throw new InternalServerErrorException(getLangMessage(req, {
+    throw new InternalServerErrorException(getLangMessage(lang, {
       en: 'Could not fetch course progress',
       ar: 'تعذر جلب تقدم الدورة',
     }));
@@ -191,13 +192,14 @@ public async getCurrentCourseProgress(
 public async resetCurrentCourseProgress(
   courseId: string,
   userId: string | Types.ObjectId,
-  req: Request,
+  lang: 'en' | 'ar' = 'en'
 ): Promise<any> {
+  lang=['en','ar'].includes(lang)?lang:'en';
   try {
     const progress = await this.courseProgress.findOne({ courseId, userId });
     if (!progress) {
       return {
-        message: getLangMessage(req, {
+        message: getLangMessage(lang, {
           en: 'Progress not found!',
           ar: 'لم يتم العثور على تقدم!',
         }),
@@ -210,7 +212,7 @@ public async resetCurrentCourseProgress(
     await progress.save();
 
     return {
-      message: getLangMessage(req, {
+      message: getLangMessage(lang, {
         en: 'Course progress has been reset',
         ar: 'تمت إعادة تعيين تقدم الدورة',
       }),
@@ -218,7 +220,7 @@ public async resetCurrentCourseProgress(
     };
   } catch (err) {
     console.error('Error in resetCurrentCourseProgress:', err.message);
-    throw new InternalServerErrorException(getLangMessage(req, {
+    throw new InternalServerErrorException(getLangMessage(lang, {
       en: 'Could not reset course progress',
       ar: 'تعذر إعادة تعيين تقدم الدورة',
     }));

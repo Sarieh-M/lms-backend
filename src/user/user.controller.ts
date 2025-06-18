@@ -31,12 +31,10 @@ export class UserController {
   @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  public Register(@Body() createUserDto: RegisterUserDto,@Req()req:Request) {
-    return this.userService.Register(createUserDto,req);
+  public Register(@Body() createUserDto: RegisterUserDto,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.userService.Register(createUserDto,lang);
   }
-
-
-
   /**
    * Authenticate a user and return a JWT.
    * @body LoginDto
@@ -46,8 +44,9 @@ export class UserController {
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req()req:Request) {
-    return this.userService.Login(loginUser,response,req);
+  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.userService.Login(loginUser,response,lang);
   }
 
   @Post('logout')
@@ -79,12 +78,10 @@ export class UserController {
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Get current user details' })
   @ApiResponse({ status: 200, description: 'Current user retrieved successfully' })
-  public getCurrentUser(
-    @CurrentUser() userPayload: JWTPayloadType,
-    @Req() req?:Request,
+  public getCurrentUser(@CurrentUser() userPayload: JWTPayloadType,@Req() req?:any,
   ) {
-    const lang=(req as any).lang || 'en';
-    return this.userService.getCurrentUser(userPayload.id,lang,req);
+    const lang = req.lang||'en';
+    return this.userService.getCurrentUser(userPayload.id,lang);
   }
 
   /**
@@ -95,8 +92,9 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @ApiBody({ description: 'Forgot Password DTO', type: ForgotPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset email sent' })
-  public forgotPassword(@Body() body: ForgotPasswordDto,@Req()req:Request) {
-    return this.userService.sendRestPassword(body.email,req);
+  public forgotPassword(@Body() body: ForgotPasswordDto,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.userService.sendRestPassword(body.email,lang);
   }
 
   /**
@@ -108,12 +106,10 @@ export class UserController {
   @ApiExcludeEndpoint()
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'resetPasswordToken', type: String })
-  public getResetPassword(
-    @Param('id') id: Types.ObjectId,
-    @Param('resetPasswordToken') resetPasswordToken: string
-    ,@Req()req:Request
+  public getResetPassword(@Param('id') id: Types.ObjectId,@Param('resetPasswordToken') resetPasswordToken: string,@Req()req:any
   ) {
-    return this.userService.getRestPassword(id, resetPasswordToken,req);
+    const lang = req.lang||'en';
+    return this.userService.getRestPassword(id, resetPasswordToken,lang);
   }
 
   /**
@@ -123,8 +119,9 @@ export class UserController {
   @Post('reset-password')
   @ApiBody({ description: 'Reset Password DTO', type: ResetPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
-  public resetPassword(@Body() body: ResetPasswordDto,@Req()req:Request) {
-    return this.userService.resetPassword(body,req);
+  public resetPassword(@Body() body: ResetPasswordDto,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.userService.resetPassword(body,lang);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -138,12 +135,10 @@ export class UserController {
    */
   @Get('verify-email/:id/:verificationToken')
   @ApiExcludeEndpoint()
-  public verifyEmail(
-    @Param('id') id: Types.ObjectId,
-    @Param('verificationToken') verificationToken: string,
-    @Req() req?:Request,
+  public verifyEmail(@Param('id') id: Types.ObjectId,@Param('verificationToken') verificationToken: string,@Req() req?:any,
   ) {
-    return this.userService.verifyEmail(id, verificationToken,req);
+    const lang = req.lang||'en';
+    return this.userService.verifyEmail(id, verificationToken,lang);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -164,14 +159,9 @@ export class UserController {
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name or email' })
   @ApiQuery({ name: 'role', required: false, type: String, description: 'Filter by role' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  public getAllUsers(
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('search') search?: string,
-    @Query('role') role?: string,
-    @Req() req?:Request,
+  public getAllUsers(@Query('page') page = 1,@Query('limit') limit = 10,@Query('search') search?: string,@Query('role') role?: string,@Req() req?:any,
   ) {
-    const lang=(req as any).lang || 'en';
+    const lang = req.lang||'en';
     return this.userService.getAllUsers(+page, +limit, search, role,lang,);
   }
 
@@ -189,13 +179,9 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden. Only ADMIN allowed' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  public update(
-    @Query('id', ParseObjectIdPipe) id: Types.ObjectId,
-    @CurrentUser() payload: JWTPayloadType,
-    @Body() updateUserDto: UpdateUserDto,
-    @Req() req?:Request,
-  ) {
-    return this.userService.update(id, payload, updateUserDto,req);
+  public update(@Query('id', ParseObjectIdPipe) id: Types.ObjectId,@CurrentUser() payload: JWTPayloadType,@Body() updateUserDto: UpdateUserDto,@Req() req?:any,) {
+    const lang = req.lang||'en';
+    return this.userService.update(id, payload, updateUserDto,lang);
   }
 
   /**
@@ -211,11 +197,8 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden. Only ADMIN allowed' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  public remove(
-    @CurrentUser() payload: JWTPayloadType,
-    @Query('id', ParseObjectIdPipe) id: Types.ObjectId,
-    @Req() req?:Request,
-  ) {
-    return this.userService.remove(id, payload,req);
+  public remove(@CurrentUser() payload: JWTPayloadType,@Query('id', ParseObjectIdPipe) id: Types.ObjectId,@Req() req?:any,) {
+    const lang = req.lang||'en';
+    return this.userService.remove(id, payload,lang);
   }
 }

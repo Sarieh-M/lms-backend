@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { StudentCourseService } from './student-course.service';
 import { Types } from 'mongoose';
 import { CurrentUser } from 'src/user/decorator/current-user.decorator';
@@ -7,7 +7,6 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { AuthGuard } from 'src/user/guard/auth.guard';
-import { Request } from 'express';
 
 @ApiTags('Student Course')
 @Controller('student-course')
@@ -19,8 +18,7 @@ export class StudentCourseController {
   // ─────────────────────────────────────────────────────────────
 
   @Get('All-student-view-course')
-  @ApiOperation({summary: 'List courses available to students',
-    description:'Retrieve all courses that any student could potentially view (with optional filters).',})
+  @ApiOperation({summary: 'List courses available to students',description:'Retrieve all courses that any student could potentially view (with optional filters).',})
   @ApiQuery({ name: 'category', required: false, description: 'Filter by category' })
   @ApiQuery({ name: 'level', required: false, description: 'Filter by course level' })
   @ApiQuery({ name: 'primaryLanguage', required: false, description: 'Filter by language' })
@@ -34,21 +32,11 @@ export class StudentCourseController {
     @Query('page') page: number=1,
     @Query('limit') limit: number=10,
   ) {
-    return this.studentCourseService.getAllStudentViewCourses(
-      category,
-      level,
-      primaryLanguage,
-      sortBy,
-      page,
-      limit,
-    );
+    return this.studentCourseService.getAllStudentViewCourses(category,level,primaryLanguage,sortBy,page,limit,);
   }
 
   @Get('All-student-view-course-details/:courseId')
-  @ApiOperation({
-    summary: 'Get public course details',
-    description: 'Fetch detailed information about a specific course for viewing.',
-  })
+  @ApiOperation({summary: 'Get public course details',description: 'Fetch detailed information about a specific course for viewing.',})
   @ApiParam({ name: 'courseId', type: String, description: 'Course ObjectId' })
   @ApiResponse({ status: 200, description: 'Course details retrieved successfully.' })
   @ApiResponse({ status: 404, description: 'Course not found.' })
@@ -65,23 +53,13 @@ export class StudentCourseController {
   @UseGuards(AuthGuard, AuthRolesGuard)
   @Roles('student')
   @Get('check-purchase/:courseId')
-  @ApiOperation({
-    summary: 'Check purchase status for a course',
-    description: 'Determine whether the current student has purchased the given course.',
-  })
+  @ApiOperation({summary: 'Check purchase status for a course',description: 'Determine whether the current student has purchased the given course.',})
   @ApiParam({ name: 'courseId', type: String, description: 'Course ObjectId' })
   @ApiResponse({ status: 200, description: 'Purchase status returned.' })
   @ApiResponse({ status: 404, description: 'Student or purchase record not found.' })
-  public checkCoursePurchaseInfo(
-    @Param('courseId') courseId: string,
-    @CurrentUser() user: JWTPayloadType,
-    @Req()req:Request
-  ) {
-    return this.studentCourseService.checkCoursePurchaseInfo(
-      new Types.ObjectId(courseId),
-      user,
-      req
-    );
+  public checkCoursePurchaseInfo(@Param('courseId') courseId: string,@CurrentUser() user: JWTPayloadType,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.studentCourseService.checkCoursePurchaseInfo(new Types.ObjectId(courseId),user,lang);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -91,25 +69,12 @@ export class StudentCourseController {
   @UseGuards(AuthGuard, AuthRolesGuard)
   @Roles('admin', 'teacher')
   @Get('get-all-courses-for-you/:studentId')
-  @ApiOperation({
-    summary: 'Get all purchased courses for a student',
-    description:
-      'Retrieve the list of courses that a specific student has purchased.',
-  })
+  @ApiOperation({summary: 'Get all purchased courses for a student',description:'Retrieve the list of courses that a specific student has purchased.',})
   @ApiParam({ name: 'studentId', type: String, description: 'Student’s UserId ObjectId' })
   @ApiResponse({ status: 200, description: 'Purchased courses retrieved.' })
   @ApiResponse({ status: 404, description: 'Student not found or no purchases.' })
-  public getAllCoursesForCurrentStudent(
-    @Param('studentId') studentId: string,
-    @CurrentUser() user: JWTPayloadType,
-    @Req()req:Request
-  ) {
-    return this.studentCourseService.getAllCoursesForCurrentStudent(
-      new Types.ObjectId(studentId),
-      user,
-      req
-    );
+  public getAllCoursesForCurrentStudent(@Param('studentId') studentId: string,@CurrentUser() user: JWTPayloadType,@Req()req:any) {
+    const lang = req.lang||'en';
+    return this.studentCourseService.getAllCoursesForCurrentStudent(new Types.ObjectId(studentId),user,lang);
   }
-
-  
 }

@@ -7,7 +7,6 @@ import { Roles } from 'src/user/decorator/user-role.decorator';
 import { UserRole } from 'utilitis/enums';
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { Types } from 'mongoose';
-import { Request } from 'express';
 
 @Controller('order')
 export class OrderController {
