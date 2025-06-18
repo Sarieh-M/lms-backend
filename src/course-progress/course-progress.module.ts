@@ -13,7 +13,7 @@ import { AuthGuard } from 'src/user/guard/auth.guard';
 import { Student, StudentCourseSchema } from 'src/student-course/schemas/student-course.schema';
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { UserModule } from 'src/user/user.module';
-import { Course, CourseSchema } from 'src/course/schema/course.schema';
+import { Course, CourseSchema } from 'src/course/Schemas/course.schema';
 
 @Module({
   imports:[

@@ -2,8 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Validatio
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
-import { Roles } from 'src/user/decorator/user-role.decorator';
-import { UserRole } from 'utilitis/enums';
+import { Roles } from 'src/user/decorator/user-role.decorator';;
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
