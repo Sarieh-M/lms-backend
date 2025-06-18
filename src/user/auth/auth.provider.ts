@@ -215,7 +215,7 @@ export class AuthProvider {
     userFromDB.resetPasswordToken = await randomBytes(32).toString('hex');
     const result = await userFromDB.save();
 
-    const resetPasswordLink = `${this.configService.get<string>('DOMAIN')}/reset-password/${result._id}/${result.resetPasswordToken}`;
+    const resetPasswordLink = `${this.configService.get<string>('DOMAIN')}/reset-password/api/user${result._id}/${result.resetPasswordToken}`;
     await this.mailService.sendRestPasswordTemplate(userEmail, resetPasswordLink);
 
     const successMsg = lang === 'ar'
