@@ -17,15 +17,17 @@ export class OrderController {
   @Post('create-order')
   @Roles(UserRole.ADMIN,UserRole.STUDENT,UserRole.TEACHER)
   @UseGuards(AuthRolesGuard)
-  public async createOrder(@Body() orderDto:OrderDto,@CurrentUser() payload:JWTPayloadType,@Req()req:Request ){
-    return await this.orderService.createOrder(orderDto,payload.id,req);
+  public async createOrder(@Body() orderDto:OrderDto,@CurrentUser() payload:JWTPayloadType,@Req()req:any ){
+    const lang = req.lang||'en';
+    return await this.orderService.createOrder(orderDto,payload.id,lang);
   }
 
   @Post('capture-payment')
   @Roles(UserRole.ADMIN, UserRole.STUDENT, UserRole.TEACHER)
   @UseGuards(AuthRolesGuard)
-  public async capturePaymentAndFinalizeOrder(@Body() body:Ids,@Req()req:Request ){
-    return await this.orderService.capturePaymentAndFinalizeOrder(body,req);
+  public async capturePaymentAndFinalizeOrder(@Body() body:Ids,@Req()req:any ){
+    const lang = req.lang||'en';
+    return await this.orderService.capturePaymentAndFinalizeOrder(body,lang);
   }
 
 

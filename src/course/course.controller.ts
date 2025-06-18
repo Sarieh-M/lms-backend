@@ -29,9 +29,10 @@ export class CourseController {
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     createCourseDto: CreateCourseDto,
     @CurrentUser() user: JWTPayloadType,
-    @Req()req:Request
+    @Req()req: any
   ) {
-    return this.courseService.AddNewCourse(createCourseDto, user.id,req);
+    const lang = req.lang||'en';
+    return this.courseService.AddNewCourse(createCourseDto, user.id,lang);
   }
 
   @Post(':idCourse/add-lecture-to-course')
@@ -47,9 +48,9 @@ export class CourseController {
     @Param('idCourse') idCourse: string,
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     lectureDto: LectureDTO,
-    @Req() req: Request,
+    @Req() req: any,
   ) {
-    const lang = req.headers['lang'] || 'en';
+    const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(idCourse)) {
       throw new BadRequestException(
@@ -57,7 +58,7 @@ export class CourseController {
       );
     }
 
-    return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse), lectureDto,req);
+    return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse), lectureDto,lang);
   }
 
   @Patch('update/:id')
@@ -78,9 +79,9 @@ export class CourseController {
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     updateCourseDto: UpdateCourseDto,
     @CurrentUser() user: JWTPayloadType,
-    @Req() req: Request,
+    @Req() req: any,
   ) {
-    const lang = req.headers['lang'] || 'en';
+    const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(
@@ -88,7 +89,7 @@ export class CourseController {
       );
     }
 
-    return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id,req);
+    return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id,lang);
   }
 
   // ──────────────────────────────
@@ -106,9 +107,9 @@ export class CourseController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('useFilter') useFilter = false,
-    @Req() req?: Request,
+    @Req() req?: any,
   ) {
-    const lang = req?.headers['lang'] || 'en';
+    const lang = req.lang||'en';
     return this.courseService.getAllCourses(
       category,
       level,
@@ -117,6 +118,7 @@ export class CourseController {
       page,
       limit,
       useFilter,
+      lang
     );
   }
 
@@ -129,8 +131,8 @@ export class CourseController {
     description: 'The ID of the course to retrieve',
     example: '642b821384f25c6d9f9c0b10',
   })
-  public getCourseDetailsByID(@Param('id') id: string, @Req() req: Request) {
-    const lang = req.headers['lang'] || 'en';
+  public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
+    const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(
@@ -138,7 +140,7 @@ export class CourseController {
       );
     }
 
-    return this.courseService.getCourseDetailsByID(new Types.ObjectId(id));
+    return this.courseService.getCourseDetailsByID(new Types.ObjectId(id),lang);
   }
 
   @Delete('delete/:id')
@@ -149,8 +151,8 @@ export class CourseController {
   @ApiParam({ name: 'id', description: 'Course ID', type: String })
   @ApiResponse({ status: 200, description: 'Course deleted successfully' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  async deleteCourse(@Param('id') id: string, @Req() req: Request) {
-    const lang = req.headers['lang'] || 'en';
+  async deleteCourse(@Param('id') id: string, @Req() req: any) {
+  const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(
@@ -158,6 +160,6 @@ export class CourseController {
       );
     }
 
-    return this.courseService.deleteCourse(new Types.ObjectId(id),req);
+    return this.courseService.deleteCourse(new Types.ObjectId(id),lang);
   }
 }

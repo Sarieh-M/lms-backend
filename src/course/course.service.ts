@@ -20,10 +20,10 @@ export class CourseService {
     
 ) {}
    
-public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.ObjectId, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
 
-  const user = await this.userService.getCurrentUserDocument(instructorId, req);
+  const user = await this.userService.getCurrentUserDocument(instructorId, lang);
   if (!user) {
     const message = lang === 'ar' ? '  المستخدم غير موجود' : 'User not found';
     throw new NotFoundException(message);
@@ -70,8 +70,8 @@ public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.
   }
 }
 //============================================================================
-public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO,lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
 
   try {
     const lecture = await this.lectureModel.create({
@@ -108,6 +108,7 @@ public async getAllCourses(
   lang: 'en' | 'ar' = 'en'
 ): Promise<{ totalCourses: number, totalPages: number, currentPage: number, courses: any[] }> {
 
+  lang=['en','ar'].includes(lang)?lang:'en';
   const filters = {
     ...(category ? { [`category.${lang}`]: { $regex: category, $options: 'i' } } : {}),
     ...(level ? { level: { $regex: level, $options: 'i' } } : {}),
@@ -141,10 +142,14 @@ public async getAllCourses(
   // إرجاع فقط الحقول باللغة المطلوبة
   const localizedCourses = courses.map(course => ({
     ...course.toObject(),
-    title: course.title[lang],
-    category: course.category[lang],
-    description: course.description[lang],
-    welcomeMessage: course.welcomeMessage[lang],
+    title: course.title[lang]||'',
+    category: course.category[lang]||'',
+    description: course.description[lang]||'',
+    welcomeMessage: course.welcomeMessage[lang]||'',
+    subtitle: course.subtitle?.[lang]||'',
+    level: course.level?.[lang]||'',
+
+
   }));
 
   return {
@@ -157,7 +162,7 @@ public async getAllCourses(
 //============================================================================
 public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
   const courseDetails = await this.courseModel.findById(id).populate('curriculum') as any;
-
+  lang=['en','ar'].includes(lang)?lang:'en';
   if (!courseDetails) {
     const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
     throw new NotFoundException(message);
@@ -167,16 +172,16 @@ public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en') 
     _id: courseDetails._id,
     instructorId: courseDetails.instructorId,
     instructorName: courseDetails.instructorName,
-    title: courseDetails.title?.[lang],
-    category: courseDetails.category?.[lang],
-    level: courseDetails.level,
+    title: courseDetails.title?.[lang]||'',
+    category: courseDetails.category?.[lang]||'',
+    level: courseDetails.level?.[lang]||'',
     image: courseDetails.image,
-    subtitle: courseDetails.subtitle,
+    subtitle: courseDetails.subtitle?.[lang]||'',
     primaryLanguage: courseDetails.primaryLanguage,
-    description: courseDetails.description?.[lang],
-    welcomeMessage: courseDetails.welcomeMessage?.[lang],
+    description: courseDetails.description?.[lang]||'',
+    welcomeMessage: courseDetails.welcomeMessage?.[lang]||'',
     objectives: Array.isArray(courseDetails.objectives)
-      ? courseDetails.objectives.map((obj: any) => obj?.[lang])
+      ? courseDetails.objectives.map((obj: any) => obj?.[lang]||'')
       : [],
     pricing: courseDetails.pricing,
     curriculum: courseDetails.curriculum,
@@ -187,8 +192,8 @@ public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en') 
   return localizedCourse;
 }
 //============================================================================
-public async updateCourseByID(id: Types.ObjectId, updateCourseDto: UpdateCourseDto, instructorId: Types.ObjectId, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+public async updateCourseByID(id: Types.ObjectId, updateCourseDto: UpdateCourseDto, instructorId: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
 
   const course = await this.courseModel.findById(id);
   if (!course) {
@@ -242,11 +247,11 @@ public async updateCourseByID(id: Types.ObjectId, updateCourseDto: UpdateCourseD
   }
 }
 //============================================================================
-public async updateCourseJustFieldStudent(order: HydratedDocument<Order>, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+public async updateCourseJustFieldStudent(order: HydratedDocument<Order>, lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
 
   const course = await this.getCourseDetailsByID(order.courseId, lang);
-  const user = await this.userService.getCurrentUserDocument(order.userId, req);
+  const user = await this.userService.getCurrentUserDocument(order.userId, lang);
 
   if (!course) {
     const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
@@ -264,8 +269,8 @@ public async updateCourseJustFieldStudent(order: HydratedDocument<Order>, req: R
   await this.courseModel.findByIdAndUpdate(order.courseId, { students: course.students });
 }
 //============================================================================
-public async deleteCourse(courseId: Types.ObjectId, req: Request) {
-  const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';
+public async deleteCourse(courseId: Types.ObjectId,  lang: 'en' | 'ar' = 'en') {
+  lang=['en','ar'].includes(lang)?lang:'en';
 
   try {
     const course = await this.courseModel.findById(courseId);

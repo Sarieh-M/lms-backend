@@ -71,13 +71,13 @@ export class UserService {
     }
     //============================================================================
     //this one for course.servce (AddNewCourse)
-    public async getCurrentUserDocument(id: Types.ObjectId,req:Request) {
-const lang = (req.headers['lang'] === 'ar' || req.headers['language'] === 'ar') ? 'ar' : 'en';  const user = await this.userModel.findById(id);
-   if (!user) {
+    public async getCurrentUserDocument(id: Types.ObjectId,lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en';  const user = await this.userModel.findById(id);
+    if (!user) {
     const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
     throw new NotFoundException(msg);
-  }
-  return user;
+    }
+    return user;
     }
     // this one for all
     public async getCurrentUser(id: Types.ObjectId, lang: 'en' | 'ar' = 'en',req:Request) {

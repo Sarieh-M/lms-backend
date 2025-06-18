@@ -111,10 +111,9 @@ export class OrderService {
      * @param orderId Order ID in the database
      * @returns Order confirmation response
      */
-    public async capturePaymentAndFinalizeOrder(body: Ids, req: Request) {
+    public async capturePaymentAndFinalizeOrder(body: Ids, lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
   try {
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
-
     const order = await this.orderModel.findById(body.orderId);
     if (!order) {
       const message = lang === 'ar' ? 'الطلب غير موجود' : 'Order not found';
@@ -129,7 +128,7 @@ export class OrderService {
     await order.save();
 
     await this.studentCourseService.UpdateStudentCourses(order);
-    await this.courseService.updateCourseJustFieldStudent(order, req);
+    await this.courseService.updateCourseJustFieldStudent(order, lang);
 
     const successMessage = lang === 'ar' ? 'تم تأكيد الطلب بنجاح' : 'Order confirmed successfully';
 
@@ -141,8 +140,6 @@ export class OrderService {
 
   } catch (err) {
     console.error("Error in capturePaymentAndFinalizeOrder:", err);
-
-    const lang = req.headers['lang'] === 'ar' || req.headers['language'] === 'ar' ? 'ar' : 'en';
     const errorMessage = lang === 'ar'
       ? 'فشل في تأكيد الطلب ومعالجة الدفع'
       : 'Failed to capture payment and finalize order';

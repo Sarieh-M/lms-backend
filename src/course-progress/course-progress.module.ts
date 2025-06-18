@@ -3,7 +3,7 @@ import { CourseProgressService } from './course-progress.service';
 import { CourseProgressController } from './course-progress.controller';
 import { DatabaseModule } from 'src/db/database.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { CourseProgress, CourseProgressSchema } from './schemas/course-progress.schema';
+import { CourseProgress, CourseProgressSchema } from './schemas/course-progress.schema'
 import { LectureProgres, LectureProgresSchema } from './schemas/lecture-progress.schema';
 import { CourseModule } from 'src/course/course.module';
 import { StudentCourseModule } from 'src/student-course/student-course.module';
