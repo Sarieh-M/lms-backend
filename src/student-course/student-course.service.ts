@@ -5,7 +5,7 @@ import { CourseService } from '../course/course.service';
 import { Student } from './schemas/student-course.schema';
 import { JWTPayloadType } from 'utilitis/types';
 import { Order } from '../order/schema/order.schema';
-import { Course } from '../course/Schemas/course.schema';
+import { Course } from '../course/schemas/course.schema';
 import { Request } from 'express';
 
 function getLangMessage(req: Request, messages: { ar: string; en: string }) {
