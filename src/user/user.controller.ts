@@ -58,13 +58,16 @@ export class UserController {
     return this.userService.logout(response);
   }
 
-    @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
-    @ApiResponse({ status: 200, description: 'New access token generated successfully' })
-    @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
-    @Post('refresh-token')
-  async refreshAccessToken(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    return await this.userService.refreshAccessToken(request,response);
-  }
+@Post('refresh-token')
+@ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+@ApiResponse({ status: 200, description: 'New access token generated successfully' })
+@ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
+async refreshAccessToken(
+  @Req() request: Request,
+  @Res({ passthrough: true }) response: Response
+) {
+  return await this.userService.refreshAccessToken(request, response);
+}
   // ─────────────────────────────────────────────────────────────────────
   // Protected Endpoints: Current User & Password Reset
   // ─────────────────────────────────────────────────────────────────────
@@ -102,19 +105,6 @@ export class UserController {
    * @param id - User ObjectId
    * @param resetPasswordToken - token sent via email
    */
-  @Get('reset-password/:id/:resetPasswordToken')
-  @ApiParam({ name: 'id', type: String })
-  @ApiParam({ name: 'resetPasswordToken', type: String })
-  public getResetPassword(
-    @Param('id') id: string,
-    @Param('resetPasswordToken') resetPasswordToken: string,
-    @Req() req: any
-  ) {
-    const lang = req.lang || 'en';
-    const objectId = new Types.ObjectId(id);
-    return this.userService.getRestPassword(objectId, resetPasswordToken, lang);
-  }
-
   /**
    * Reset the user's password using the provided DTO.
    * @body ResetPasswordDto

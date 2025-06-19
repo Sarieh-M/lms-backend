@@ -153,7 +153,6 @@ export class AuthProvider {
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     
-    await this.mailService.sendLoginEmail(userEmail,lang);
     return { AccessToken: accessToken };
     }
     //============================================================================
@@ -204,77 +203,61 @@ export class AuthProvider {
     }
     }
     //============================================================================
-    public async SendResetPasswordLink(userEmail: string, lang: 'en' | 'ar' = 'en') {
+    public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
+        lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const cleanedEmail = userEmail.trim().toLowerCase();
-    const userFromDB = await this.userModul.findOne({ userEmail: cleanedEmail });
-    if (!userFromDB) {
-    const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-    throw new BadRequestException(msg);
-    }
 
-    userFromDB.resetPasswordToken = await randomBytes(32).toString('hex');
-    const result = await userFromDB.save();
+        const userFromDB = await this.userModul.findOne({ userEmail: cleanedEmail });
+        if (!userFromDB) {
+            const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+            throw new BadRequestException(msg);
+        }
 
-    const resetPasswordLink = `${this.configService.get<string>('DOMAIN')}/reset-password/api/user${result._id}/${result.resetPasswordToken}`;
-    await this.mailService.sendRestPasswordTemplate(userEmail, resetPasswordLink);
+        const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const expiry = new Date(Date.now() + 2 * 60 * 1000); 
 
-    const successMsg = lang === 'ar'
-        ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. يرجى التحقق من البريد لمتابعة العملية'
-        : 'Reset password link has been sent to your email. Please check your email to continue';
+        userFromDB.resetCode = resetCode;
+        userFromDB.resetCodeExpiry = expiry;
 
-    return {
-        message: successMsg
-    };
+        await userFromDB.save();
+
+        await this.mailService.sendResetCodeEmail(userEmail, resetCode, lang);
+
+        const successMsg = lang === 'ar'
+            ? 'تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'
+            : 'Reset code has been sent to your email';
+
+        return { message: successMsg };
     }
     //============================================================================
-    public async GetResetPasswordLink(userId: Types.ObjectId, resetPassordToken: string, lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en'; 
-
-    const userFromDB = await this.userModul.findOne({ _id: userId }); // استخدم _id بدل id
-
-    if (!userFromDB) {
-        const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-        throw new BadRequestException(msg);
-    }
-
-    if (
-        !userFromDB.resetPasswordToken ||
-        userFromDB.resetPasswordToken !== resetPassordToken
-    ) {
-        const msg = lang === 'ar' ? 'الرابط غير صالح أو منتهي' : 'Invalid or expired link';
-        throw new BadRequestException(msg);
-    }
-
-    const successMsg = lang === 'ar' ? 'الرابط صالح، يمكنك المتابعة' : 'Valid link. You may proceed';
-    return { message: successMsg };
-    }
     //============================================================================
     public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en'; 
-    const { userEmail, newPassword, RestPasswordToken } = resetPasswordDto;
+        lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+        const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
-    const userFromDB = await this.userModul.findOne({ userEmail });
+        const userFromDB = await this.userModul.findOne({ userEmail: userEmail.trim().toLowerCase() });
 
-    if (!userFromDB) {
-        const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-        throw new BadRequestException(msg);
-    }
+        if (!userFromDB) {
+            throw new BadRequestException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
+        }
 
-    if (!userFromDB.resetPasswordToken || userFromDB.resetPasswordToken !== RestPasswordToken) {
-        const msg = lang === 'ar' ? 'رمز إعادة التعيين غير صالح أو منتهي' : 'Invalid or expired reset token';
-        throw new BadRequestException(msg);
-    }
+        if (
+            !userFromDB.resetCode ||
+            userFromDB.resetCode !== resetCode ||
+            !userFromDB.resetCodeExpiry ||
+            new Date() > new Date(userFromDB.resetCodeExpiry)
+        ) {
+            throw new BadRequestException(lang === 'ar' ? 'رمز التحقق غير صالح أو منتهي' : 'Invalid or expired reset code');
+        }
 
-    const hashedPassword = await this.hashPasswword(newPassword);
-    userFromDB.password = hashedPassword;
-    userFromDB.resetPasswordToken = null;
-    await userFromDB.save();
+        const hashedPassword = await this.hashPasswword(newPassword);
+        userFromDB.password = hashedPassword;
+        userFromDB.resetCode = null;
+        userFromDB.resetCodeExpiry = null;
 
-    const successMsg = lang === 'ar'
-        ? 'تم تغيير كلمة المرور بنجاح'
-        : 'Password changed successfully';
+        await userFromDB.save();
 
-    return { message: successMsg };
+        return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' };
     }
     //============================================================================
     public async hashPasswword(password:string):Promise<string>{

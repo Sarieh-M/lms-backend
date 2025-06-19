@@ -247,13 +247,10 @@ export class UserService {
     //============================================================================
     public async sendRestPassword(email: string,lang: 'en' | 'ar' = 'en') {
             lang=['en','ar'].includes(lang)?lang:'en';
-      return await this.authProvider.SendResetPasswordLink(email,lang);
+      return await this.authProvider.SendResetPasswordCode(email,lang);
     }
     //============================================================================
-    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,lang: 'en' | 'ar' = 'en') {
-            lang=['en','ar'].includes(lang)?lang:'en';
-      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,lang);
-    }
+
     //============================================================================
     public async resetPassword(body: ResetPasswordDto,lang: 'en' | 'ar' = 'en') {
             lang=['en','ar'].includes(lang)?lang:'en';

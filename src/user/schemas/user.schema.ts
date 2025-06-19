@@ -37,7 +37,10 @@ export class User {
   gender: UserGender;
 
   @Prop()
-  resetPasswordToken: string;
+  resetCode?: string;
+
+  @Prop()
+  resetCodeExpiry?: Date;
 
   @Prop({ default: false })
   isAccountverified: boolean;
