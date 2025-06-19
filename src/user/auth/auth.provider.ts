@@ -103,25 +103,52 @@ export class AuthProvider {
     public async Login(loginDto: LoginDto, response: Response, lang: 'en' | 'ar' = 'en') {
     lang=['en','ar'].includes(lang)?lang:'en';
     const { userEmail, password } = loginDto;
+    const errors = [];
     // التحقق من أن البريد مكتوب كصيغة إيميل
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail)) {
-        const msg = lang === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة' : 'Invalid email format';
-        throw new BadRequestException(msg);
+        errors.push({
+            field: 'userEmail',
+            message:
+              lang === 'ar'
+                ? 'صيغة البريد الإلكتروني غير صحيحة'
+                : 'Invalid email format',
+          });
     }
     //  التحقق إذا كان المستخدم موجود
-    const userFromDB = await this.userModul.findOne({ userEmail });
+    const userFromDB = await this.userModul.findOne({  userEmail });
     if (!userFromDB) {
-        const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
-        throw new BadRequestException(msg);
+        errors.push({
+            field: 'userEmail',
+            message:
+              lang === 'ar'
+                ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+                : 'Invalid email or password',
+          });
     }
 
     //  التحقق من صحة كلمة المرور
     const isPasswordValid = await bcrypt.compare(password, userFromDB.password);
     if (!isPasswordValid) {
-        const msg = lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password';
-        throw new BadRequestException(msg);
+        errors.push({
+            field: 'password',
+            message:
+              lang === 'ar'
+                ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+                : 'Invalid email or password',
+          });
     }
+
+     // إذا في أخطاء، رجعها
+     if (errors.length > 0) {
+        throw new BadRequestException({
+          message:
+            lang === 'ar'
+              ? 'يوجد أخطاء في البيانات المُدخلة'
+              : 'There are validation errors',
+          errors,
+        });
+      }
 
     //  التحقق من تفعيل الحساب
     if (!userFromDB.isAccountverified) {
@@ -209,7 +236,13 @@ export class AuthProvider {
     const userFromDB = await this.userModul.findOne({ userEmail: cleanedEmail });
     if (!userFromDB) {
     const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-    throw new BadRequestException(msg);
+    throw new BadRequestException({
+        message:
+          lang === 'ar'
+          ? 'يوجد أخطاء'
+          : 'There errors',
+        errors: msg,
+      });
     }
 
     userFromDB.resetPasswordToken = await randomBytes(32).toString('hex');
@@ -234,7 +267,13 @@ export class AuthProvider {
 
     if (!userFromDB) {
         const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-        throw new BadRequestException(msg);
+        throw new BadRequestException({
+            message:
+              lang === 'ar'
+                ? 'يوجد أخطاء'
+                : 'There errors',
+            errors: msg,
+          });
     }
 
     if (
@@ -242,7 +281,13 @@ export class AuthProvider {
         userFromDB.resetPasswordToken !== resetPassordToken
     ) {
         const msg = lang === 'ar' ? 'الرابط غير صالح أو منتهي' : 'Invalid or expired link';
-        throw new BadRequestException(msg);
+        throw new BadRequestException({
+            message:
+              lang === 'ar'
+                ? 'يوجد أخطاء'
+                : 'There errors',
+            errors: msg,
+          });
     }
 
     const successMsg = lang === 'ar' ? 'الرابط صالح، يمكنك المتابعة' : 'Valid link. You may proceed';
@@ -257,12 +302,24 @@ export class AuthProvider {
 
     if (!userFromDB) {
         const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-        throw new BadRequestException(msg);
+        throw new BadRequestException({
+            message:
+              lang === 'ar'
+                ? 'يوجد أخطاء'
+                : 'There errors',
+            errors: msg,
+          });
     }
 
     if (!userFromDB.resetPasswordToken || userFromDB.resetPasswordToken !== RestPasswordToken) {
         const msg = lang === 'ar' ? 'رمز إعادة التعيين غير صالح أو منتهي' : 'Invalid or expired reset token';
-        throw new BadRequestException(msg);
+        throw new BadRequestException({
+            message:
+              lang === 'ar'
+                ? 'يوجد أخطاء'
+                : 'There errors',
+            errors: msg,
+          });
     }
 
     const hashedPassword = await this.hashPasswword(newPassword);

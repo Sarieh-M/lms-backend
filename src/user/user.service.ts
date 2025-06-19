@@ -40,7 +40,13 @@ export class UserService {
       const msg = lang === 'ar'
         ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
         : 'Username is required and must be a string';
-    throw new BadRequestException(msg);
+        throw new BadRequestException({
+          message:
+            lang === 'ar'
+              ? 'يوجد أخطاء'
+              : 'There errors',
+          errors: msg
+        });
   }
 
   // نعمل lowercase فقط
@@ -170,7 +176,13 @@ export class UserService {
       } else {
          const msg = lang === 'ar' ? 'يجب أن يكون userName كائن يحتوي على en و ar نصيين' :
                                     'userName must be an object with both en and ar strings';
-        throw new BadRequestException(msg);
+                                    throw new BadRequestException({
+                                      message:
+                                        lang === 'ar'
+                                          ? 'يوجد أخطاء'
+                                          : 'There errors',
+                                      errors: msg
+                                    });
       }
     }
 
@@ -196,7 +208,13 @@ export class UserService {
       lang=['en','ar'].includes(lang)?lang:'en';
       if (!Types.ObjectId.isValid(id)) {
       const msg = lang === 'ar' ? 'معرف المستخدم غير صالح' : 'Invalid user ID';
-      throw new BadRequestException(msg);
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء'
+            : 'There errors',
+        errors: msg
+      });
     }
 
     const userFromDB = await this.userModel.findById(id);

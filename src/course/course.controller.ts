@@ -53,9 +53,13 @@ export class CourseController {
     const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(idCourse)) {
-      throw new BadRequestException(
-        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      );
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء'
+            : 'There errors',
+        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      });
     }
 
     return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse), lectureDto,lang);
@@ -84,9 +88,13 @@ export class CourseController {
     const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException(
-        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      );
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء'
+            : 'There errors',
+        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      });
     }
 
     return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id,lang);
@@ -135,9 +143,13 @@ export class CourseController {
     const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException(
-        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      );
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء'
+            : 'There errors',
+        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      });
     }
 
     return this.courseService.getCourseDetailsByID(new Types.ObjectId(id),lang);
@@ -155,9 +167,13 @@ export class CourseController {
   const lang = req.lang||'en';
 
     if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException(
-        lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      );
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء'
+            : 'There errors',
+        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+      });
     }
 
     return this.courseService.deleteCourse(new Types.ObjectId(id),lang);
