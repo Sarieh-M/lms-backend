@@ -13,7 +13,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   dotenv.config();
-  // this one for interceptr
+  // this one for intercepor
   app.useGlobalInterceptors(new LanguageInterceptor());
   //==========================
   app.useGlobalPipes(new ValidationPipe({
@@ -43,13 +43,6 @@ async function bootstrap() {
    //===============================
   app.use(helmet());
    //===============================
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist:true,
-      forbidNonWhitelisted:true,
-    }),
-  );
-  //===============================
   const upload=multer();
    app.use((req, res, next) => {
     if (req.is('multipart/form-data')) {
