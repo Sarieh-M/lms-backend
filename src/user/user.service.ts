@@ -33,31 +33,50 @@ export class UserService {
     private readonly studentService: StudentCourseService,
   ) {}
 
-    public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en'; 
+  public async Register(
+    registerUserDto: RegisterUserDto,
+    req: Request,
+    userData: JWTPayloadType,
+  ) {
+    const lang =
+      req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
+        ? 'ar'
+        : 'en';
     const { userName } = registerUserDto;
+
+    const errors = [];
+
     if (!userName || typeof userName !== 'string') {
-      const msg = lang === 'ar'
-        ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
-        : 'Username is required and must be a string';
-        throw new BadRequestException({
-          message:
-            lang === 'ar'
-              ? 'يوجد أخطاء'
-              : 'There errors',
-          errors: msg
-        });
-  }
-
-  // نعمل lowercase فقط
-  registerUserDto.userName = userName.toLowerCase();
-
-  return await this.authProvider.Register(registerUserDto,lang);
+      const msg = errors.push({
+        field: 'userName',
+        message:
+          lang === 'ar'
+            ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
+            : 'Username is required and must be a string',
+      });
     }
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء في البيانات المُدخلة'
+            : 'There are validation errors',
+        errors,
+      });
+    }
+    // نعمل lowercase فقط
+    registerUserDto.userName = userName.toLowerCase();
+
+    return await this.authProvider.Register(registerUserDto, req, userData);
+  }
     //============================================================================
-    public async Login(loginDto: LoginDto,response:Response,lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
-      return await this.authProvider.Login(loginDto,response,lang);
+    public async Login(
+      loginDto: LoginDto,
+      response: Response,
+      req: Request,
+      userData: JWTPayloadType,
+    ) {
+      return await this.authProvider.Login(loginDto, response, req, userData);
     }
     //============================================================================
     public async logout(response:Response) {
@@ -86,7 +105,7 @@ export class UserService {
     return user;
     }
     // this one for all
-    public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en') {
+    public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en', req: Request,) {
       lang=['en','ar'].includes(lang)?lang:'en';
       const user = await this.userModel.findById(id)
       if (!user) {

@@ -31,9 +31,12 @@ export class UserController {
   @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  public Register(@Body() createUserDto: RegisterUserDto,@Req()req:any) {
-    const lang = req.lang||'en';
-    return this.userService.Register(createUserDto,lang);
+  public Register(
+    @Body() createUserDto: RegisterUserDto,
+    @Req() req: Request,
+    @CurrentUser() userData: JWTPayloadType,
+  ) {
+    return this.userService.Register(createUserDto, req, userData);
   }
   /**
    * Authenticate a user and return a JWT.
@@ -44,9 +47,13 @@ export class UserController {
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req()req:any) {
-    const lang = req.lang||'en';
-    return this.userService.Login(loginUser,response,lang);
+  public Login(
+    @Body() loginUser: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+    @Req() req: Request,
+    @CurrentUser() userData: JWTPayloadType,
+  ) {
+    return this.userService.Login(loginUser, response, req, userData);
   }
 
   @Post('logout')
@@ -81,7 +88,7 @@ export class UserController {
   public getCurrentUser(@CurrentUser() userPayload: JWTPayloadType,@Req() req?:any,
   ) {
     const lang = req.lang||'en';
-    return this.userService.getCurrentUser(userPayload.id,lang);
+    return this.userService.getCurrentUser(userPayload.id,lang, req);
   }
 
   /**

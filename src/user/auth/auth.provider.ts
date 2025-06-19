@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
@@ -12,7 +12,7 @@ import { RegisterUserDto } from '../dto/register-user.dto';
 import { LoginDto } from './../dto/login.dto';
 import { ResetPasswordDto } from './../dto/reset-password.dto';
 import { Response,Request } from 'express';
-
+import { UserService } from '../user.service';
 
 @Injectable()
 export class AuthProvider {
@@ -21,12 +21,16 @@ export class AuthProvider {
         @InjectModel(User.name) private readonly userModul:Model<User>,
         private readonly jwtService:JwtService,
         private readonly configService:ConfigService,
-        private readonly mailService:MailService
+        private readonly mailService:MailService,
+        @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     ){}
 
 
-    public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
-        lang=['en','ar'].includes(lang)?lang:'en'; 
+    public async Register(registerUserDto: RegisterUserDto, req: Request, userData: JWTPayloadType) {
+      const lang =
+        req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
+          ? 'ar'
+          : 'en';
         const { userEmail, password, userName } = registerUserDto;
         const errors = [];
         // التحقق من صحة البريد الإلكتروني
@@ -92,16 +96,21 @@ export class AuthProvider {
 
   const link = await this.generateLinke(newUser._id, newUser.verificationToken);
   await this.mailService.sendVerifyEmailTemplate(userEmail, link);
-
+  const userRegisterData = await this.userService.getCurrentUser(userData.id,
+    lang,
+    req);
   const msg = lang === 'ar'
     ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
     : 'Verification token has been sent to your email. Please verify your email to continue';
 
-  return { message: msg };
+  return { message: msg, userData: userRegisterData };
     }
     //============================================================================
-    public async Login(loginDto: LoginDto, response: Response, lang: 'en' | 'ar' = 'en') {
-    lang=['en','ar'].includes(lang)?lang:'en';
+    public async Login(loginDto: LoginDto, response: Response,req: Request, userData: JWTPayloadType) {
+      const lang =
+      req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
+        ? 'ar'
+        : 'en';
     const { userEmail, password } = loginDto;
     const errors = [];
     // التحقق من أن البريد مكتوب كصيغة إيميل
@@ -181,7 +190,10 @@ export class AuthProvider {
     });
     
     await this.mailService.sendLoginEmail(userEmail,lang);
-    return { AccessToken: accessToken };
+    const userLoginData = await this.userService.getCurrentUser(userData.id,
+      lang,
+      req);
+    return { AccessToken: accessToken, userData: userLoginData};
     }
     //============================================================================
     public async refreshAccessToken(request: Request, response: Response) {
