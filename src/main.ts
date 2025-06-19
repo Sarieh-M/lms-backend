@@ -25,10 +25,20 @@ async function bootstrap() {
   app.use(cookieParser());
    //===============================
   app.enableCors({
-    origin: 'http://localhost:5173', // Allow specific domain
-    methods: 'GET,POST,PATCH,PUT,DELETE', // Allow HTTP methods
-    credentials: true, // Allow cookies to be sent
-    allowedHeaders: 'Content-Type, Authorization', // Permitted request headers
+    origin: 'http://localhost:5173', 
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], 
+    credentials: true, 
+  allowedHeaders: [
+      'content-Type',
+      'authorization',
+      'lang',
+      'language',
+      'accept',
+    ],
+     exposedHeaders: [
+      'authorization',
+      'lang',
+    ],
   });
    //===============================
   app.use(helmet());
