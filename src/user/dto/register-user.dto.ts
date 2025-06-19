@@ -1,65 +1,51 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
-import { IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { IsString, IsEmail, MinLength, IsOptional, IsNumber, IsArray, IsEnum, IsDate } from "class-validator";
 import { Types } from "mongoose";
 import { UserGender, UserRole } from "utilitis/enums";
 
+export class RegisterUserDto {
+  @ApiProperty({ description: 'Name of the user', example: 'John Doe' })
+  @IsString()
+  @MinLength(3)
+  userName: string;
 
-export class  RegisterUserDto {
-        @IsString()
-        @IsNotEmpty({message: 'User Name is required'})
-        @ApiProperty({
-                description: 'Name of the user',
-                example: 'John Doe',
-        })
-        userName:string;
+  @ApiProperty({ description: 'User email address', example: 'user@example.com' })
+  @IsEmail()
+  userEmail: string;
 
-        @IsNotEmpty({message: 'User Email is required'})
-        @MaxLength(250,{ message: 'Password must not exceed 250 characters' })
-        @IsString({message:'User Email must be a string'})
-        @IsEmail({},{message:'User Email must be a valid email'})
-        @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/ ,{message:'User Email must be a valid email'})
-        @ApiProperty({
-                description: 'User email address',
-                example: 'user@example.com',
-        })
-        userEmail:string;
+  @ApiProperty({ description: 'Password for the user', example: 'Password@123' })
+  @IsString()
+  @MinLength(6)
+  password: string;
 
-        @IsNotEmpty({message: 'Password is required'})
-        @MaxLength(250)
-        @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, { 
-        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'})
-        @IsString({message:'Password must be a string'})
-        @Length(8, 250, {message: 'Password must be at least 8 characters long and contaions small and capital letters and numbers and special characters'})
-        @ApiProperty({
-                description: 'Password for the user',
-                example: 'Password@123',
-        })
-        password:string;
+  @ApiProperty({ description: 'User role', enum: UserRole, required: false })
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+  
+  @ApiProperty({ description: 'Profile image URL', required: false })
+  @IsOptional()
+  @IsString()
+  profileImage?: string;
 
-        @IsOptional()
-        @IsEnum(UserRole,{ message: 'Role must be a valid UserRole value' })
-        role?:UserRole;
-        
-        @IsOptional()
-        @IsString({message:'Profile Image must be a string'})
-        profileImage?: string;
+  @ApiProperty({ description: 'User age', required: false })
+  @IsOptional()
+  @IsNumber()
+  age?: number;
 
-        @IsOptional()
-        @IsInt({ message: 'Age must be a valid number' })
-        @Min(18, { message: 'Age must be at least 18' })
-        @Max(100, { message: 'Age cannot exceed 100' })
-        age?: number;
+  @ApiProperty({ description: 'Date of birth', required: false })
+  @IsOptional()
+  @Transform(({ value }) => value ? new Date(value) : value)
+  dateOfBirth?: Date;  
 
-        @IsOptional()
-        @Transform(({ value }) => value ? new Date(value) : value)
-        @IsDate({ message: 'Date of birth must be a valid date' })
-        dateOfBirth?: Date;  
+  @ApiProperty({ description: 'User gender', enum: UserGender, required: false })
+  @IsOptional()
+  @IsEnum(UserGender)
+  gender?: UserGender;  
 
-        @IsOptional()
-        @IsEnum(UserGender,{ message: 'Gender must be a valid UserGender value' })
-        gender?: UserGender;  
-
-        @IsOptional()
-        enrolledCourses?:Types.ObjectId[];
+  @ApiProperty({ description: 'Enrolled courses', type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  enrolledCourses?: Types.ObjectId[];
 }

@@ -96,7 +96,7 @@ export class AuthProvider {
 
   const link = await this.generateLinke(newUser._id, newUser.verificationToken);
   await this.mailService.sendVerifyEmailTemplate(userEmail, link);
-  const userRegisterData = await this.userService.getCurrentUser(userData.id,
+  const userRegisterData = await this.userService.getCurrentUser(newUser._id,
     lang,
     req);
   const msg = lang === 'ar'
