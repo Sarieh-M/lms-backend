@@ -160,22 +160,22 @@ export class AuthProvider {
       }
 
     //  التحقق من تفعيل الحساب
-    if (!userFromDB.isAccountverified) {
-        let verficationToken = userFromDB.verificationToken;
-        if (!verficationToken) {
-            userFromDB.verificationToken = await randomBytes(32).toString('hex');
-            const result = await userFromDB.save();
-            verficationToken = result.verificationToken;
-        }
+    // if (!userFromDB.isAccountverified) {
+    //     let verficationToken = userFromDB.verificationToken;
+    //     if (!verficationToken) {
+    //         userFromDB.verificationToken = await randomBytes(32).toString('hex');
+    //         const result = await userFromDB.save();
+    //         verficationToken = result.verificationToken;
+    //     }
 
-        const link = await this.generateLinke(userFromDB._id, verficationToken);
-        await this.mailService.sendVerifyEmailTemplate(userEmail, link);
+    //     const link = await this.generateLinke(userFromDB._id, verficationToken);
+    //     await this.mailService.sendVerifyEmailTemplate(userEmail, link);
 
-        const msg = lang === 'ar'
-            ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى التحقق لإكمال التسجيل'
-            : 'Verification token has been sent to your email, please verify to continue';
-        return { message: msg };
-    }
+    //     const msg = lang === 'ar'
+    //         ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى التحقق لإكمال التسجيل'
+    //         : 'Verification token has been sent to your email, please verify to continue';
+    //     return { message: msg };
+    // }
 
     //  إنشاء الرموز وإعداد الكوكيز
     const accessToken = await this.generateJWT({ id: userFromDB._id, userType: userFromDB.role });
@@ -190,7 +190,7 @@ export class AuthProvider {
     });
     
     await this.mailService.sendLoginEmail(userEmail,lang);
-    const userLoginData = await this.userService.getCurrentUser(userData.id,
+    const userLoginData = await this.userService.getCurrentUser(userFromDB._id,
       lang,
       req);
     return { AccessToken: accessToken, userData: userLoginData};
