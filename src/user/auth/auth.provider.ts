@@ -239,19 +239,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
         return { message: successMsg };
     }
   //============================================================================
-    public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
+ public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
         const userFromDB = await this.userModul.findOne({ userEmail: userEmail.trim().toLowerCase() });
 
-    if (!userFromDB) {
-      const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
-    }
         if (!userFromDB) {
             throw new BadRequestException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
         }
@@ -270,12 +263,10 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
         userFromDB.resetCode = null;
         userFromDB.resetCodeExpiry = null;
 
-    const successMsg =
-      lang === 'ar'
-        ? 'تم تغيير كلمة المرور بنجاح'
-        : 'Password changed successfully';
-    return { message: successMsg };
-  }
+        await userFromDB.save();
+
+        return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' };
+    }
   //============================================================================
   public async hashPasswword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
