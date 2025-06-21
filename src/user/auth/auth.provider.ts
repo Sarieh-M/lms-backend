@@ -321,6 +321,7 @@ export class AuthProvider {
 
     return {
       message: successMsg,
+      userName: userFromDB.userName,
     };
   }
   //============================================================================
