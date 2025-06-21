@@ -20,9 +20,6 @@ export class ResetPasswordDto {
     @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/ ,{message:'User Email must be a valid email'})
     userEmail:string;
 
-    @IsNotEmpty({message: 'Password is required'})
-    @MaxLength(250)
-    @IsString({message:'Password must be a string'})
-    @Length(8, 250, {message: 'Password must be at least 8 characters long and contaions small and capital letters and numbers and special characters'})
-    RestPasswordToken:string;
+    @IsNotEmpty({message: 'Reset code is required'})
+    resetCode:string;
 }

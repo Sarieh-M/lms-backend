@@ -27,17 +27,18 @@ export class UserController {
    * Register a new user.
    * @body RegisterUserDto
    */
-  @Post('auth/register')
-  @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error' })
-  public Register(
-    @Body() createUserDto: RegisterUserDto,
-    @Req() req: Request,
-    @CurrentUser() userData: JWTPayloadType,
-  ) {
-    return this.userService.Register(createUserDto, req, userData);
-  }
+@Post('auth/register')
+@ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
+@ApiResponse({ status: 201, description: 'User registered successfully' })
+@ApiResponse({ status: 400, description: 'Validation error' })
+public Register(
+  @Body() createUserDto: RegisterUserDto,
+  @Req() req: any,
+  @CurrentUser() userData?: JWTPayloadType 
+) {
+  const lang = req.lang || 'en';
+  return this.userService.Register(createUserDto, lang, userData);
+}
   /**
    * Authenticate a user and return a JWT.
    * @body LoginDto
@@ -47,13 +48,9 @@ export class UserController {
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(
-    @Body() loginUser: LoginDto,
-    @Res({ passthrough: true }) response: Response,
-    @Req() req: Request,
-    @CurrentUser() userData: JWTPayloadType,
-  ) {
-    return this.userService.Login(loginUser, response, req, userData);
+  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req() req: any,@CurrentUser() userData: JWTPayloadType,) {
+    const lang = req.lang||'en';
+    return this.userService.Login(loginUser, response, lang);
   }
 
   @Post('logout')
@@ -65,13 +62,16 @@ export class UserController {
     return this.userService.logout(response);
   }
 
-    @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
-    @ApiResponse({ status: 200, description: 'New access token generated successfully' })
-    @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
-    @Post('refresh-token')
-  async refreshAccessToken(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    return await this.userService.refreshAccessToken(request,response);
-  }
+@Post('refresh-token')
+@ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+@ApiResponse({ status: 200, description: 'New access token generated successfully' })
+@ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
+async refreshAccessToken(
+  @Req() request: Request,
+  @Res({ passthrough: true }) response: Response
+) {
+  return await this.userService.refreshAccessToken(request, response);
+}
   // ─────────────────────────────────────────────────────────────────────
   // Protected Endpoints: Current User & Password Reset
   // ─────────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ export class UserController {
   public getCurrentUser(@CurrentUser() userPayload: JWTPayloadType,@Req() req?:any,
   ) {
     const lang = req.lang||'en';
-    return this.userService.getCurrentUser(userPayload.id,lang, req);
+    return this.userService.getCurrentUser(userPayload.id,lang,);
   }
 
   /**
@@ -109,19 +109,6 @@ export class UserController {
    * @param id - User ObjectId
    * @param resetPasswordToken - token sent via email
    */
-  @Get('reset-password/:id/:resetPasswordToken')
-  @ApiParam({ name: 'id', type: String })
-  @ApiParam({ name: 'resetPasswordToken', type: String })
-  public getResetPassword(
-    @Param('id') id: string,
-    @Param('resetPasswordToken') resetPasswordToken: string,
-    @Req() req: any
-  ) {
-    const lang = req.lang || 'en';
-    const objectId = new Types.ObjectId(id);
-    return this.userService.getRestPassword(objectId, resetPasswordToken, lang);
-  }
-
   /**
    * Reset the user's password using the provided DTO.
    * @body ResetPasswordDto

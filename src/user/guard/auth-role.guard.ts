@@ -36,7 +36,7 @@ export class AuthRolesGuard implements CanActivate {
                 });
                 // أو استخدم اللغة حسب الهيدر إذا متاح عندك:
                 const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
-                const user = await this.userService.getCurrentUser(payload.id, lang,request);
+                const user = await this.userService.getCurrentUser(payload.id, lang);
                 if (user && Array.isArray(roles) && roles.includes(user.role)) {
                     request[CURRNET_USER_KEY] = payload;
                     return true;
