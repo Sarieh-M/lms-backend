@@ -27,7 +27,7 @@ export class AuthProvider {
 
 public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en' ) {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-  const { userEmail, password } = registerUserDto;
+  const { userEmail, password,userName } = registerUserDto;
   const errors = [];
 
   // مثال تحقق مبسط
@@ -38,8 +38,39 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     });
   }
 
-  // تحقق من باقي الحقول بنفس الطريقة...
+// التحقق من قوة كلمة المرور
+  if (typeof password !== 'string' || password.length < 6) {
+    errors.push({
+      field: 'password',
+      message: lang === 'ar'
+        ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+        : 'Password must be at least 6 characters long',
+    });
+  }
 
+  // التحقق من تكرار البريد الإلكتروني
+  const existingByEmail = await this.userModul.findOne({ userEmail });
+  if (existingByEmail) {
+    errors.push({
+      field: 'userEmail',
+      message: lang === 'ar'
+        ? 'البريد الإلكتروني مستخدم بالفعل'
+        : 'User email already exists',
+    });
+  }
+
+  // التحقق من تكرار اسم المستخدم
+  const existingByUsername = await this.userModul.findOne({ userName });
+  if (existingByUsername) {
+    errors.push({
+      field: 'userName',
+      message: lang === 'ar'
+        ? 'اسم المستخدم مستخدم بالفعل'
+        : 'User name already exists',
+    });
+  }
+
+  // إذا في أخطاء، رجعها
   if (errors.length > 0) {
     throw new BadRequestException({
       message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
@@ -47,16 +78,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     });
   }
 
-  // هنا تقدر تستخدم userData اللي جاي من التوكين، لو احتجت
-
-  // هاش لكلمة المرور
+  // إذا كل شي تمام، أنشئ المستخدم
   const hashedPassword = await this.hashPasswword(password);
-
-  // إنشاء المستخدم
   let newUser = new this.userModul({
     ...registerUserDto,
     password: hashedPassword,
-    verificationToken: (await randomBytes(32)).toString('hex'),
+    verificationToken: await randomBytes(32).toString('hex'),
   });
 
   newUser = await newUser.save();
@@ -189,8 +216,8 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
-        path: '/api/user/refresh-token',
+        sameSite: 'none',
+        path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
@@ -282,19 +309,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     return { message: successMsg };
   }
   //============================================================================
-    public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
+ public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
         const userFromDB = await this.userModul.findOne({ userEmail: userEmail.trim().toLowerCase() });
 
-    if (!userFromDB) {
-      const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
-    }
         if (!userFromDB) {
             throw new BadRequestException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
         }
@@ -313,12 +333,10 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
         userFromDB.resetCode = null;
         userFromDB.resetCodeExpiry = null;
 
-    const successMsg =
-      lang === 'ar'
-        ? 'تم تغيير كلمة المرور بنجاح'
-        : 'Password changed successfully';
-    return { message: successMsg };
-  }
+        await userFromDB.save();
+
+        return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' };
+    }
   //============================================================================
   public async hashPasswword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);

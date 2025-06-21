@@ -62,7 +62,7 @@ public Register(
     return this.userService.logout(response);
   }
 
-@Post('refresh-token')
+@Get('refresh-token')
 @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
 @ApiResponse({ status: 200, description: 'New access token generated successfully' })
 @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
