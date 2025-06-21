@@ -149,6 +149,7 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       sameSite: 'none',
+      secure:true,
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -156,7 +157,7 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     return { AccessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
-    public async refreshAccessToken(request: Request, response: Response) {
+    public async refreshAccessToken(request: Request, response: Response,) {
     const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
 
     const refreshToken = request.cookies['refresh_token'];
@@ -184,7 +185,9 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
 
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
+        
         sameSite: 'none',
+        secure:true,
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
