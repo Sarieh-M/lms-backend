@@ -87,12 +87,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
 
       const accessToken = await this.generateJWT({
         id: userFromDB._id,
-        userType: userFromDB.verificationToken,
+        userType: userFromDB.userEmail,
       });
 
       const refreshToken = await this.generateRefreshToken({
         id: userFromDB._id,
-        userType: userFromDB.verificationToken,
+        userType: userFromDB.userEmail,
       });
 
       response.cookie('refresh_token', refreshToken, {
