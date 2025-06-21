@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  forwardRef,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import {BadRequestException,forwardRef,Inject,Injectable,UnauthorizedException,} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
@@ -31,113 +25,59 @@ export class AuthProvider {
     private readonly userService: UserService,
   ) {}
 
-  public async Register(
-    registerUserDto: RegisterUserDto,
-    req: Request,
-    userData: JWTPayloadType,
-  ) {
-    const lang =
-      req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
-        ? 'ar'
-        : 'en';
-    const { userEmail, password, userName } = registerUserDto;
-    const errors = [];
-    // التحقق من صحة البريد الإلكتروني
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail);
-    if (!isEmailValid) {
-      errors.push({
-        field: 'userEmail',
-        message:
-          lang === 'ar'
-            ? 'البريد الإلكتروني غير صالح'
-            : 'User email is not a valid email address',
-      });
-    }
+public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en' ) {
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+  const { userEmail, password } = registerUserDto;
+  const errors = [];
 
-    // التحقق من قوة كلمة المرور
-    if (typeof password !== 'string' || password.length < 6) {
-      errors.push({
-        field: 'password',
-        message:
-          lang === 'ar'
-            ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
-            : 'Password must be at least 6 characters long',
-      });
-    }
-
-    // التحقق من تكرار البريد الإلكتروني
-    const existingByEmail = await this.userModul.findOne({ userEmail });
-    if (existingByEmail) {
-      errors.push({
-        field: 'userEmail',
-        message:
-          lang === 'ar'
-            ? 'البريد الإلكتروني مستخدم بالفعل'
-            : 'User email already exists',
-      });
-    }
-
-    // التحقق من تكرار اسم المستخدم
-    const existingByUsername = await this.userModul.findOne({ userName });
-    if (existingByUsername) {
-      errors.push({
-        field: 'userName',
-        message:
-          lang === 'ar'
-            ? 'اسم المستخدم مستخدم بالفعل'
-            : 'User name already exists',
-      });
-    }
-
-    // إذا في أخطاء، رجعها
-    if (errors.length > 0) {
-      throw new BadRequestException({
-        message:
-          lang === 'ar'
-            ? 'يوجد أخطاء في البيانات المُدخلة'
-            : 'There are validation errors',
-        errors,
-      });
-    }
-
-    // إذا كل شي تمام، أنشئ المستخدم
-    const hashedPassword = await this.hashPasswword(password);
-    let newUser = new this.userModul({
-      ...registerUserDto,
-      password: hashedPassword,
-      verificationToken: await randomBytes(32).toString('hex'),
+  // مثال تحقق مبسط
+  if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+    errors.push({
+      field: 'userEmail',
+      message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
     });
-
-    newUser = await newUser.save();
-
-    const link = await this.generateLinke(
-      newUser._id,
-      newUser.verificationToken,
-    );
-    await this.mailService.sendVerifyEmailTemplate(userEmail, link);
-    const userRegisterData = await this.userService.getCurrentUser(
-      newUser._id,
-      lang,
-      req,
-    );
-    const msg =
-      lang === 'ar'
-        ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
-        : 'Verification token has been sent to your email. Please verify your email to continue';
-
-    return { message: msg, userData: userRegisterData };
   }
+
+  // تحقق من باقي الحقول بنفس الطريقة...
+
+  if (errors.length > 0) {
+    throw new BadRequestException({
+      message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
+      errors,
+    });
+  }
+
+  // هنا تقدر تستخدم userData اللي جاي من التوكين، لو احتجت
+
+  // هاش لكلمة المرور
+  const hashedPassword = await this.hashPasswword(password);
+
+  // إنشاء المستخدم
+  let newUser = new this.userModul({
+    ...registerUserDto,
+    password: hashedPassword,
+    verificationToken: (await randomBytes(32)).toString('hex'),
+  });
+
+  newUser = await newUser.save();
+
+  const link = await this.generateLinke(newUser._id, newUser.verificationToken);
+
+  await this.mailService.sendVerifyEmailTemplate(userEmail, link);
+
+  // استدعاء بيانات المستخدم الجديد للرجوع بها
+  const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
+
+  const msg =
+    lang === 'ar'
+      ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
+      : 'Verification token has been sent to your email. Please verify your email to continue';
+
+  return { message: msg, userData: userRegisterData };
+}
   //============================================================================
-  public async Login(
-    loginDto: LoginDto,
-    response: Response,
-    req: Request,
-    userData: JWTPayloadType,
-  ) {
-    const lang =
-      req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
-        ? 'ar'
-        : 'en';
+  public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
     const { userEmail, password } = loginDto;
     const errors = [];
     // التحقق من أن البريد مكتوب كصيغة إيميل
@@ -206,14 +146,8 @@ export class AuthProvider {
     }
 
     //  إنشاء الرموز وإعداد الكوكيز
-    const accessToken = await this.generateJWT({
-      id: userFromDB._id,
-      userType: userFromDB.role,
-    });
-    const refreshToken = await this.generateRefreshToken({
-      id: userFromDB._id,
-      userType: userFromDB.role,
-    });
+    const accessToken = await this.generateJWT({id: userFromDB._id,userType: userFromDB.role,});
+    const refreshToken = await this.generateRefreshToken({id: userFromDB._id,userType: userFromDB.role,});
 
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
@@ -222,21 +156,13 @@ export class AuthProvider {
       path: '/api/user/refresh-token',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-
-    await this.mailService.sendLoginEmail(userEmail, lang);
-    const userLoginData = await this.userService.getCurrentUser(
-      userFromDB._id,
-      lang,
-      req,
-    );
+    const userLoginData = await this.userService.getCurrentUser(userFromDB._id,lang,);
     return { AccessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
-  public async refreshAccessToken(request: Request, response: Response) {
-    const lang =
-      request.headers['lang'] === 'ar' || request.headers['language'] === 'ar'
-        ? 'ar'
-        : 'en';
+    public async refreshAccessToken(request: Request, response: Response) {
+    const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
+
     const refreshToken = request.cookies['refresh_token'];
 
     if (!refreshToken) {
@@ -289,30 +215,25 @@ export class AuthProvider {
     }
   }
   //============================================================================
-  public async SendResetPasswordLink(
-    userEmail: string,
-    lang: 'en' | 'ar' = 'en',
-  ) {
-    const cleanedEmail = userEmail.trim().toLowerCase();
-    const userFromDB = await this.userModul.findOne({
-      userEmail: cleanedEmail,
-    });
-    if (!userFromDB) {
-      const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
-    }
+    public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
+        lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+        const cleanedEmail = userEmail.trim().toLowerCase();
 
-    userFromDB.resetPasswordToken = await randomBytes(32).toString('hex');
-    const result = await userFromDB.save();
+        const userFromDB = await this.userModul.findOne({ userEmail: cleanedEmail });
+        if (!userFromDB) {
+            const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+            throw new BadRequestException(msg);
+        }
 
-    const resetPasswordLink = `${this.configService.get<string>('DOMAIN')}/reset-password/api/user${result._id}/${result.resetPasswordToken}`;
-    await this.mailService.sendRestPasswordTemplate(
-      userEmail,
-      resetPasswordLink,
-    );
+        const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const expiry = new Date(Date.now() + 2 * 60 * 1000); 
+
+        userFromDB.resetCode = resetCode;
+        userFromDB.resetCodeExpiry = expiry;
+
+        await userFromDB.save();
+
+        await this.mailService.sendResetCodeEmail(userEmail, resetCode, lang);
 
     const successMsg =
       lang === 'ar'
@@ -361,14 +282,11 @@ export class AuthProvider {
     return { message: successMsg };
   }
   //============================================================================
-  public async ResetPassword(
-    resetPasswordDto: ResetPasswordDto,
-    lang: 'en' | 'ar' = 'en',
-  ) {
-    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-    const { userEmail, newPassword, RestPasswordToken } = resetPasswordDto;
+    public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
+        lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+        const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
-    const userFromDB = await this.userModul.findOne({ userEmail });
+        const userFromDB = await this.userModul.findOne({ userEmail: userEmail.trim().toLowerCase() });
 
     if (!userFromDB) {
       const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
@@ -377,31 +295,28 @@ export class AuthProvider {
         errors: msg,
       });
     }
+        if (!userFromDB) {
+            throw new BadRequestException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
+        }
 
-    if (
-      !userFromDB.resetPasswordToken ||
-      userFromDB.resetPasswordToken !== RestPasswordToken
-    ) {
-      const msg =
-        lang === 'ar'
-          ? 'رمز إعادة التعيين غير صالح أو منتهي'
-          : 'Invalid or expired reset token';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
-    }
+        if (
+            !userFromDB.resetCode ||
+            userFromDB.resetCode !== resetCode ||
+            !userFromDB.resetCodeExpiry ||
+            new Date() > new Date(userFromDB.resetCodeExpiry)
+        ) {
+            throw new BadRequestException(lang === 'ar' ? 'رمز التحقق غير صالح أو منتهي' : 'Invalid or expired reset code');
+        }
 
-    const hashedPassword = await this.hashPasswword(newPassword);
-    userFromDB.password = hashedPassword;
-    userFromDB.resetPasswordToken = null;
-    await userFromDB.save();
+        const hashedPassword = await this.hashPasswword(newPassword);
+        userFromDB.password = hashedPassword;
+        userFromDB.resetCode = null;
+        userFromDB.resetCodeExpiry = null;
 
     const successMsg =
       lang === 'ar'
         ? 'تم تغيير كلمة المرور بنجاح'
         : 'Password changed successfully';
-
     return { message: successMsg };
   }
   //============================================================================
@@ -413,18 +328,15 @@ export class AuthProvider {
   private generateJWT(payload: JWTPayloadType): Promise<string> {
     return this.jwtService.signAsync(payload);
   }
-  //============================================================================
-  private async generateRefreshToken(payload: JWTPayloadType): Promise<string> {
-    return await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'),
+  //============================================================================  
+    private async generateRefreshToken(payload: JWTPayloadType): Promise<string> {
+        return await this.jwtService.signAsync(payload, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'),
     });
   }
   //============================================================================
-  private async generateLinke(
-    userId: Types.ObjectId,
-    verficationToken: string,
-  ) {
+  private async generateLinke(userId: Types.ObjectId,verficationToken: string,) {
     return `${this.configService.get<string>('DOMAIN')}/api/user/verify-email/${userId}/${verficationToken}`;
   }
   //============================================================================

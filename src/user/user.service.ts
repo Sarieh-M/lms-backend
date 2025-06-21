@@ -33,24 +33,12 @@ export class UserService {
     private readonly studentService: StudentCourseService,
   ) {}
 
-  public async Register(
-    registerUserDto: RegisterUserDto,
-    req: Request,
-    userData: JWTPayloadType,
-  ) {
-    const lang =
-      req.headers['lang'] === 'ar' || req.headers['language'] === 'ar'
-        ? 'ar'
-        : 'en';
+  public async Register(registerUserDto: RegisterUserDto,lang: 'en' | 'ar' = 'en',userData: JWTPayloadType,) {
+    lang=['en','ar'].includes(lang)?lang:'en'; 
     const { userName } = registerUserDto;
-
     const errors = [];
-
     if (!userName || typeof userName !== 'string') {
-      const msg = errors.push({
-        field: 'userName',
-        message:
-          lang === 'ar'
+      const msg = errors.push({field: 'userName',message:lang === 'ar'
             ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا'
             : 'Username is required and must be a string',
       });
@@ -67,16 +55,12 @@ export class UserService {
     // نعمل lowercase فقط
     registerUserDto.userName = userName.toLowerCase();
 
-    return await this.authProvider.Register(registerUserDto, req, userData);
+    return await this.authProvider.Register(registerUserDto,lang);
   }
     //============================================================================
-    public async Login(
-      loginDto: LoginDto,
-      response: Response,
-      req: Request,
-      userData: JWTPayloadType,
-    ) {
-      return await this.authProvider.Login(loginDto, response, req, userData);
+    public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
+      return await this.authProvider.Login(loginDto, response,);
     }
     //============================================================================
     public async logout(response:Response) {
@@ -105,14 +89,13 @@ export class UserService {
     return user;
     }
     // this one for all
-    public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en', req: Request,) {
+    public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
       lang=['en','ar'].includes(lang)?lang:'en';
       const user = await this.userModel.findById(id)
       if (!user) {
         const msg = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
         throw new NotFoundException(msg);
   }
-
   return {
     userName: user.userName,
     role: this.roleTranslations[user.role]?.[lang] || user.role,
@@ -284,12 +267,7 @@ export class UserService {
     //============================================================================
     public async sendRestPassword(email: string,lang: 'en' | 'ar' = 'en') {
             lang=['en','ar'].includes(lang)?lang:'en';
-      return await this.authProvider.SendResetPasswordLink(email,lang);
-    }
-    //============================================================================
-    public async getRestPassword(id: Types.ObjectId, resetPasswordToken: string,lang: 'en' | 'ar' = 'en') {
-            lang=['en','ar'].includes(lang)?lang:'en';
-      return await this.authProvider.GetResetPasswordLink( id, resetPasswordToken,lang);
+      return await this.authProvider.SendResetPasswordCode(email,lang);
     }
     //============================================================================
     public async resetPassword(body: ResetPasswordDto,lang: 'en' | 'ar' = 'en') {

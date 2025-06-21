@@ -13,7 +13,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   dotenv.config();
-  // this one for interceptr
+  // this one for intercepor
   app.useGlobalInterceptors(new LanguageInterceptor());
   //==========================
   app.useGlobalPipes(new ValidationPipe({
@@ -25,21 +25,24 @@ async function bootstrap() {
   app.use(cookieParser());
    //===============================
   app.enableCors({
-    origin: 'http://localhost:5173', // Allow specific domain
-    methods: 'GET,POST,PATCH,PUT,DELETE', // Allow HTTP methods
-    credentials: true, // Allow cookies to be sent
-    allowedHeaders: 'Content-Type, Authorization', // Permitted request headers
+    origin: 'http://localhost:5173', 
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], 
+    credentials: true, 
+  allowedHeaders: [
+      'content-Type',
+      'authorization',
+      'lang',
+      'language',
+      'accept',
+    ],
+     exposedHeaders: [
+      'authorization',
+      'lang',
+    ],
   });
    //===============================
   app.use(helmet());
    //===============================
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist:true,
-      forbidNonWhitelisted:true,
-    }),
-  );
-  //===============================
   const upload=multer();
    app.use((req, res, next) => {
     if (req.is('multipart/form-data')) {

@@ -46,25 +46,35 @@ export class MailService {
     await this.sendEmail(toEmail, subject, text, html, lang);
   }
   
-public async sendLoginEmail(email: string, lang: 'en' | 'ar' = 'en'): Promise<void> {
-  try {
-    const today = new Date();
-    await this.mailerService.sendMail({
-      to: email,
-      from: `"No Reply" <${this.configService.get('MAIL_USER')}>`,
-      subject: lang === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Login to your account',
-      template: 'login', 
-      context: {
-        email,
-        today,
-        lang,
-      },
-    });
-  } catch (err) {
-    console.error(' Failed to send login email:', err);
-    throw new RequestTimeoutException('Something went wrong, please try again later');
+    public async sendResetCodeEmail(email: string, code: string, lang: 'en' | 'ar' = 'en'): Promise<void> {
+    try {
+      const today = new Date().toLocaleDateString('ar-en');
+
+      await this.mailerService.sendMail({
+    to: email,
+    from: `No Reply <${this.configService.get('MAIL_USER')}>`,
+    subject: lang === 'ar'
+      ? 'رمز إعادة تعيين كلمة المرور'
+      : 'Password Reset Code',
+    template: 'reset-code',
+    context: {
+      email,
+      code,
+      today,
+      lang,
+      message:
+        lang === 'ar'
+          ?` رمز إعادة تعيين كلمة المرور الخاص بك هو: ${code}.\nهذا الرمز صالح لمدة دقيقة واحدة فقط.`
+          : `Your password reset code is: ${code}.\nThis code is valid for only one minute.`,
+    },
+  });
+    } catch (err) {
+      console.error(' Failed to send reset code email:', err);
+      throw new RequestTimeoutException(
+        lang === 'ar' ? 'حدث خطأ، حاول مرة أخرى لاحقًا' : 'Something went wrong, please try again later'
+      );
+    }
   }
-}
 
   private async sendEmail(toEmail: string, subject: string, text: string, html: string, lang: 'ar' | 'en') {
      try {
