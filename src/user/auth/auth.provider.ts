@@ -73,27 +73,78 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
   return { message: msg, userData: userRegisterData };
 }
   //============================================================================
-  public async Login(loginDto: LoginDto, response: Response, lang: 'en' | 'ar' = 'en') {
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+  public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
+      lang=['en','ar'].includes(lang)?lang:'en';
+    const { userEmail, password } = loginDto;
+    const errors = [];
+    // التحقق من أن البريد مكتوب كصيغة إيميل
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+      errors.push({
+        field: 'userEmail',
+        message:
+          lang === 'ar'
+            ? 'صيغة البريد الإلكتروني غير صحيحة'
+            : 'Invalid email format',
+      });
+    }
+    //  التحقق إذا كان المستخدم موجود
+    const userFromDB = await this.userModul.findOne({ userEmail });
+    if (!userFromDB) {
+      errors.push({
+        field: 'userEmail',
+        message:
+          lang === 'ar'
+            ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+            : 'Invalid email or password',
+      });
+    }
 
-      const { userEmail, password } = loginDto;
-      const userFromDB = await this.userModul.findOne({ userEmail });
+    //  التحقق من صحة كلمة المرور
+    const isPasswordValid = await bcrypt.compare(password, userFromDB.password);
+    if (!isPasswordValid) {
+      errors.push({
+        field: 'password',
+        message:
+          lang === 'ar'
+            ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+            : 'Invalid email or password',
+      });
+    }
 
-      if (!userFromDB || !(await bcrypt.compare(password, userFromDB.password))) {
-        throw new UnauthorizedException(
-          lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password'
-        );
+    // إذا في أخطاء، رجعها
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        message:
+          lang === 'ar'
+            ? 'يوجد أخطاء في البيانات المُدخلة'
+            : 'There are validation errors',
+        errors,
+      });
+    }
+
+    //التحقق من تفعيل الحساب
+    if (!userFromDB.isAccountverified) {
+      let verficationToken = userFromDB.verificationToken;
+      if (!verficationToken) {
+        userFromDB.verificationToken = await randomBytes(32).toString('hex');
+        const result = await userFromDB.save();
+        verficationToken = result.verificationToken;
       }
 
-      const accessToken = await this.generateJWT({
-        id: userFromDB._id,
-        userType: userFromDB.userEmail,
-      });
+      const link = await this.generateLinke(userFromDB._id, verficationToken);
+      await this.mailService.sendVerifyEmailTemplate(userEmail, link);
 
-      const refreshToken = await this.generateRefreshToken({
-        id: userFromDB._id,
-        userType: userFromDB.userEmail,
-      });
+      const msg =
+        lang === 'ar'
+          ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى التحقق لإكمال التسجيل'
+          : 'Verification token has been sent to your email, please verify to continue';
+      return { message: msg };
+    }
+
+    //  إنشاء الرموز وإعداد الكوكيز
+    const accessToken = await this.generateJWT({id: userFromDB._id,userType: userFromDB.role,});
+    const refreshToken = await this.generateRefreshToken({id: userFromDB._id,userType: userFromDB.role,});
 
       response.cookie('refresh_token', refreshToken, {
         httpOnly: true,
@@ -102,8 +153,8 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
-
-      return { accessToken };
+    const userLoginData = await this.userService.getCurrentUser(userFromDB._id,lang,);
+    return { AccessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
     public async refreshAccessToken(request: Request, response: Response) {
