@@ -146,13 +146,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     const accessToken = await this.generateJWT({id: userFromDB._id,userType: userFromDB.role,});
     const refreshToken = await this.generateRefreshToken({id: userFromDB._id,userType: userFromDB.role,});
 
-      response.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+    response.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     const userLoginData = await this.userService.getCurrentUser(userFromDB._id,lang,);
     return { AccessToken: accessToken, userData: userLoginData };
   }
@@ -231,52 +230,12 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
 
         await this.mailService.sendResetCodeEmail(userEmail, resetCode, lang);
 
-    const successMsg =
-      lang === 'ar'
-        ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. يرجى التحقق من البريد لمتابعة العملية'
-        : 'Reset password link has been sent to your email. Please check your email to continue';
+        const successMsg = lang === 'ar'
+            ? 'تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'
+            : 'Reset code has been sent to your email';
 
-    return {
-      message: successMsg,
-      userName: userFromDB.userName,
-    };
-  }
-  //============================================================================
-  public async GetResetPasswordLink(
-    userId: Types.ObjectId,
-    resetPassordToken: string,
-    lang: 'en' | 'ar' = 'en',
-  ) {
-    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-    const userFromDB = await this.userModul.findOne({ _id: userId }); // استخدم _id بدل id
-
-    if (!userFromDB) {
-      const msg = lang === 'ar' ? 'الرابط غير صالح' : 'Invalid link';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
+        return { message: successMsg };
     }
-
-    if (
-      !userFromDB.resetPasswordToken ||
-      userFromDB.resetPasswordToken !== resetPassordToken
-    ) {
-      const msg =
-        lang === 'ar' ? 'الرابط غير صالح أو منتهي' : 'Invalid or expired link';
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: msg,
-      });
-    }
-
-    const successMsg =
-      lang === 'ar'
-        ? 'الرابط صالح، يمكنك المتابعة'
-        : 'Valid link. You may proceed';
-    return { message: successMsg };
-  }
   //============================================================================
  public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
