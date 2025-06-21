@@ -67,8 +67,8 @@ export class UserService {
       await response.clearCookie('refresh_token', {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
-        path: '/api/user/refresh-token',
+        sameSite: 'none',
+        path: '/',
       });
 
       return { message: 'Logged out successfully' };
