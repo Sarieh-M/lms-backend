@@ -46,9 +46,6 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
       errors,
     });
   }
-
-  // هنا تقدر تستخدم userData اللي جاي من التوكين، لو احتجت
-
   // هاش لكلمة المرور
   const hashedPassword = await this.hashPasswword(password);
 
