@@ -36,6 +36,7 @@ async function bootstrap() {
       'accept',
     ],
      exposedHeaders: [
+      'Set-Cookie',
       'authorization',
       'lang',
     ],
