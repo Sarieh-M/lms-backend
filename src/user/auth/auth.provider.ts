@@ -185,9 +185,9 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
 
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        path: '/api/user/refresh-token',
+        secure: true,
+        sameSite: 'none',
+        path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
