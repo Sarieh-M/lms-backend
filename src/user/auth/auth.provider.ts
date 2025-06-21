@@ -27,7 +27,7 @@ export class AuthProvider {
 
 public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en' ) {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-  const { userEmail, password } = registerUserDto;
+  const { userEmail, password,userName } = registerUserDto;
   const errors = [];
 
   // مثال تحقق مبسط
@@ -38,22 +38,52 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     });
   }
 
-  // تحقق من باقي الحقول بنفس الطريقة...
+// التحقق من قوة كلمة المرور
+  if (typeof password !== 'string' || password.length < 6) {
+    errors.push({
+      field: 'password',
+      message: lang === 'ar'
+        ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+        : 'Password must be at least 6 characters long',
+    });
+  }
 
+  // التحقق من تكرار البريد الإلكتروني
+  const existingByEmail = await this.userModul.findOne({ userEmail });
+  if (existingByEmail) {
+    errors.push({
+      field: 'userEmail',
+      message: lang === 'ar'
+        ? 'البريد الإلكتروني مستخدم بالفعل'
+        : 'User email already exists',
+    });
+  }
+
+  // التحقق من تكرار اسم المستخدم
+  const existingByUsername = await this.userModul.findOne({ userName });
+  if (existingByUsername) {
+    errors.push({
+      field: 'userName',
+      message: lang === 'ar'
+        ? 'اسم المستخدم مستخدم بالفعل'
+        : 'User name already exists',
+    });
+  }
+
+  // إذا في أخطاء، رجعها
   if (errors.length > 0) {
     throw new BadRequestException({
       message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
       errors,
     });
   }
-  // هاش لكلمة المرور
-  const hashedPassword = await this.hashPasswword(password);
 
-  // إنشاء المستخدم
+  // إذا كل شي تمام، أنشئ المستخدم
+  const hashedPassword = await this.hashPasswword(password);
   let newUser = new this.userModul({
     ...registerUserDto,
     password: hashedPassword,
-    verificationToken: (await randomBytes(32)).toString('hex'),
+    verificationToken: await randomBytes(32).toString('hex'),
   });
 
   newUser = await newUser.save();
