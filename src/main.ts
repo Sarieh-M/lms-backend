@@ -25,11 +25,11 @@ async function bootstrap() {
   app.use(cookieParser());
    //===============================
   app.enableCors({
-    origin: 'https://lms-learn-project.vercel.app', 
+    origin: ['http://localhost:5173','https://lms-learn-project.vercel.app', ], 
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], 
     credentials: true, 
   allowedHeaders: [
-      'content-Type',
+      'Content-Type',
       'Authorization',
       'lang',
       'language',
