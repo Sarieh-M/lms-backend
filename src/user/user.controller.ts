@@ -48,7 +48,7 @@ public Register(
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req() req: any,@CurrentUser() userData: JWTPayloadType,) {
+  public async Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req() req: any,@CurrentUser() userData: JWTPayloadType,) {
     const lang = req.lang||'en';
     return this.userService.Login(loginUser, response, lang);
   }
@@ -63,6 +63,7 @@ public Register(
   }
 
 @Get('refresh-token')
+@HttpCode(HttpStatus.OK)
 @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
 @ApiResponse({ status: 200, description: 'New access token generated successfully' })
 @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
