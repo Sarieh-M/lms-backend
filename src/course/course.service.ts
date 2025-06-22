@@ -8,14 +8,17 @@ import { UserService } from 'src/user/user.service';
 import { LectureDTO } from './dto/lecture-course.dto';
 import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
+import { UserRole } from 'utilitis/enums';
+import { Student } from 'src/student-course/schemas/student-course.schema';
 
 
 @Injectable()
 export class CourseService {
 
     constructor(@InjectModel(Course.name)private readonly courseModel: Model<Course>,
+    @InjectModel(Student.name) private readonly studentModel: Model<Student>,
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
-    @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>
+    @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,
     
 ) {}
    
@@ -104,51 +107,80 @@ public async getAllCourses(
   page: number = 1,
   limit: number = 10,
   useFilter: boolean = false,
-  lang: 'en' | 'ar' = 'en'
-): Promise<{ totalCourses: number, totalPages: number, currentPage: number, courses: any[] }> {
+  lang: 'en' | 'ar' = 'en',
+  user?: any // Add user parameter
+): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-  lang=['en','ar'].includes(lang)?lang:'en';
-  const filters = {
+  // Base filters
+  const baseFilters = {
     ...(category ? { [`category.${lang}`]: { $regex: category, $options: 'i' } } : {}),
     ...(level ? { level: { $regex: level, $options: 'i' } } : {}),
     ...(primaryLanguage ? { primaryLanguage: { $regex: primaryLanguage, $options: 'i' } } : {}),
   };
 
+  // Role-based filters
+  let roleFilter = {};
+  if (user) {
+    switch (user.userType) {
+      case UserRole.ADMIN:
+        // Admin sees all courses
+        break;
+        
+      case UserRole.TEACHER:
+        // Teacher sees only their own courses
+        roleFilter = { instructorId: new Types.ObjectId(user.id) };
+        break;
+        
+      case UserRole.STUDENT:
+        // Student sees only enrolled courses
+        const student = await this.studentModel.findOne({ userId: new Types.ObjectId(user.id) });
+        if (student) {
+          const enrolledCourseIds = student.courses.flatMap(c => c.idCourses);
+          roleFilter = { _id: { $in: enrolledCourseIds } };
+        } else {
+          roleFilter = { _id: { $in: [] } }; // No courses if student not found
+        }
+        break;
+        
+      default:
+        // Unauthenticated/other roles see all courses
+    }
+  }
+
+  // Combine filters
+  const finalFilter = {
+    ...(useFilter ? baseFilters : {}),
+    ...roleFilter
+  };
+
+  // Sorting logic
   let sortParam = {};
   switch (sortBy) {
-    case 'price-lowtohigh':
-      sortParam = { pricing: 1 };
-      break;
-    case 'price-hightolow':
-      sortParam = { pricing: -1 };
-      break;
-    case 'title-atoz':
-      sortParam = { [`title.${lang}`]: 1 };
-      break;
-    case 'title-ztoa':
-      sortParam = { [`title.${lang}`]: -1 };
-      break;
-    default:
-      sortParam = { pricing: 1 };
+    case 'price-lowtohigh': sortParam = { pricing: 1 }; break;
+    case 'price-hightolow': sortParam = { pricing: -1 }; break;
+    case 'title-atoz': sortParam = { [`title.${lang}`]: 1 }; break;
+    case 'title-ztoa': sortParam = { [`title.${lang}`]: -1 }; break;
+    default: sortParam = { pricing: 1 };
   }
 
   const skip = (page - 1) * limit;
+  const totalCourses = await this.courseModel.countDocuments(finalFilter);
+  const courses = await this.courseModel.find(finalFilter)
+    .sort(sortParam)
+    .skip(skip)
+    .limit(limit)
+    .exec();
 
-  const totalCourses = await this.courseModel.countDocuments(useFilter ? filters : {});
-  const coursesQuery = this.courseModel.find(useFilter ? filters : {}).sort(sortParam).skip(skip).limit(limit);
-  const courses = await coursesQuery.exec();
-
-  // إرجاع فقط الحقول باللغة المطلوبة
+  // Localize courses
   const localizedCourses = courses.map(course => ({
     ...course.toObject(),
-    title: course.title[lang]||'',
-    category: course.category[lang]||'',
-    description: course.description[lang]||'',
-    welcomeMessage: course.welcomeMessage[lang]||'',
-    subtitle: course.subtitle?.[lang]||'',
-    level: course.level?.[lang]||'',
-
-
+    title: course.title[lang] || '',
+    category: course.category[lang] || '',
+    description: course.description[lang] || '',
+    welcomeMessage: course.welcomeMessage[lang] || '',
+    subtitle: course.subtitle?.[lang] || '',
+    level: course.level?.[lang] || '',
   }));
 
   return {

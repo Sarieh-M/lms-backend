@@ -118,6 +118,7 @@ export class CourseController {
     @Req() req?: any,
   ) {
     const lang = req.lang||'en';
+    const user = req.user;
     return this.courseService.getAllCourses(
       category,
       level,
@@ -126,7 +127,8 @@ export class CourseController {
       page,
       limit,
       useFilter,
-      lang
+      lang,
+      user,
     );
   }
 
