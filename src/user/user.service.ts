@@ -65,23 +65,22 @@ export class UserService {
     }
     //============================================================================
     // Log out the current user
-    public async logout(response: Response, lang: 'en' | 'ar' = 'en') {
-    response.clearCookie('access_token', {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-    });
-    
-    const message =
-      lang === 'ar'
-        ? 'تم تسجيل الخروج بنجاح'
-        : 'Logged out successfully';
+    public async logout(response: Response, req: Request, lang: 'en' | 'ar' = 'en') {
 
-    return {
-      message,
-    };
-    }
+  response.clearCookie('refresh_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/',
+  });
+
+  const message =
+    lang === 'ar'
+      ? 'تم تسجيل الخروج بنجاح'
+      : 'Logged out successfully';
+
+  return { message };
+}
     //============================================================================
     // Refresh the access token (used when the current one expires)
     public async refreshAccessToken(request:Request,response:Response){

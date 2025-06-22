@@ -52,13 +52,12 @@ public Register(
 
   @Post('logout')
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
   logout( @Res({ passthrough: true }) response: Response,@Req() req: any,) {
     const lang = req.lang||'en';
-    return this.userService.logout(response, lang);
+    return this.userService.logout(response,req, lang);
   }
 
 @Get('refresh-token')
