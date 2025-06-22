@@ -172,7 +172,7 @@ export class AuthProvider {
     }
 
     //  إنشاء الرموز وإعداد الكوكيز
-    const accessToken = await this.generateJWT({id: userFromDB._id,userType: userFromDB.role,});
+    const AccessToken = await this.generateJWT({id: userFromDB._id,userType: userFromDB.role,});
     const refreshToken = await this.generateRefreshToken({id: userFromDB._id,userType: userFromDB.role,});
 
     response.cookie('refresh_token', refreshToken, {
@@ -183,7 +183,7 @@ export class AuthProvider {
       maxAge: 60 * 60 * 1000,
     });
     const userLoginData = await this.userService.getCurrentUser(userFromDB._id,lang,);
-    return { accessToken: accessToken, userData: userLoginData };
+    return { accessToken: AccessToken, userData: userLoginData };
   }
   //============================================================================
   //This one for refresh token 
