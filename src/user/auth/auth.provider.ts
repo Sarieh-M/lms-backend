@@ -187,7 +187,7 @@ export class AuthProvider {
       maxAge: 60 * 60 * 1000,
     });
     const userLoginData = await this.userService.getCurrentUser(userFromDB._id,lang,);
-    return { AccessToken: accessToken, userData: userLoginData };
+    return { accessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
   public async refreshAccessToken(request: Request, response: Response) {
@@ -226,7 +226,6 @@ export class AuthProvider {
 
     // 3. إحضار بيانات المستخدم
     const user = await this.userService.getCurrentUser(payload.id, lang);
-
     // 4. رجوع البيانات
     return {
       accessToken: newAccessToken,
@@ -278,12 +277,12 @@ export class AuthProvider {
         const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
         const userFromDB = await this.userModul.findOne({ userEmail: userEmail.trim().toLowerCase() });
-
+        
         if (!userFromDB) {
             throw new BadRequestException(lang === 'ar' ? 'المستخدم غير موجود' : 'User not found');
         }
 
-        if (
+        if (  
             !userFromDB.resetCode ||
             userFromDB.resetCode !== resetCode ||
             !userFromDB.resetCodeExpiry ||
@@ -298,8 +297,9 @@ export class AuthProvider {
         userFromDB.resetCodeExpiry = null;
 
         await userFromDB.save();
-
-        return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' };
+        return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' ,
+          userName:userFromDB.userName,
+        };
     }
   //============================================================================
   public async hashPasswword(password: string): Promise<string> {
