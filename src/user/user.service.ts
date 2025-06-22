@@ -64,6 +64,7 @@ export class UserService {
     }
     //============================================================================
   public async logout(response: Response, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en';
     response.clearCookie('refresh_token', {
       httpOnly: true,
       secure: true,
