@@ -69,9 +69,9 @@ export class UserService {
 
   response.clearCookie('refresh_token', {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    path: '/',
+      sameSite: 'none',
+      secure:true,
+      path: '/',
   });
 
   const message =
