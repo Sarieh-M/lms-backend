@@ -1,4 +1,4 @@
-import {BadRequestException,forwardRef,Inject,Injectable,UnauthorizedException,} from '@nestjs/common';
+import {BadRequestException,forwardRef,Inject,Injectable,InternalServerErrorException,UnauthorizedException,} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
@@ -25,53 +25,92 @@ export class AuthProvider {
     private readonly userService: UserService,
   ) {}
 
-public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en' ) {
-  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-  const { userEmail, password } = registerUserDto;
-  const errors = [];
+  public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
+    try {
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+      const { userEmail, password, userName } = registerUserDto;
+      const errors = [];
 
-  // مثال تحقق مبسط
-  if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
-    errors.push({
-      field: 'userEmail',
-      message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
-    });
+      //  تحقق من البريد الإلكتروني
+      if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+        errors.push({
+          field: 'userEmail',
+          message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
+        });
+      }
+
+      //  تحقق من تكرار البريد الإلكتروني
+      const existingUserByEmail = await this.userModul.findOne({ userEmail });
+      if (existingUserByEmail) {
+        errors.push({
+          field: 'userEmail',
+          message: lang === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل' : 'Email is already registered',
+        });
+      }
+
+      //  تحقق من اسم المستخدم
+      if (!userName || typeof userName !== 'string') {
+        errors.push({
+          field: 'userName',
+          message: lang === 'ar' ? 'اسم المستخدم مطلوب ويجب أن يكون نصاً' : 'Username is required and must be a string',
+        });
+      } else {
+        const existingUserByUsername = await this.userModul.findOne({ userName: userName.toLowerCase() });
+        if (existingUserByUsername) {
+          errors.push({
+            field: 'userName',
+            message: lang === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username is already taken',
+          });
+        }
+      }
+      //  إرجاع أول خطأ فقط
+      if (errors.length > 0) {
+        throw new BadRequestException({
+          statusCode: 400,
+          success: false,
+          errorField: errors[0].field,
+          errorMessage: errors[0].message,
+        });
+      }
+
+      //  تجهيز المستخدم
+      const hashedPassword = await this.hashPasswword(password);
+      const verificationToken = randomBytes(32).toString('hex');
+
+      let newUser = new this.userModul({
+        ...registerUserDto,
+        userName: userName.toLowerCase(), // نحول الاسم لصيغة صغيرة
+        password: hashedPassword,
+        verificationToken,
+      });
+
+      newUser = await newUser.save();
+
+      const link = await this.generateLinke(newUser._id, verificationToken);
+      await this.mailService.sendVerifyEmailTemplate(userEmail, link);
+
+      const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
+
+      const msg = lang === 'ar'
+        ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
+        : 'Verification token has been sent to your email. Please verify your email to continue';
+
+      return { message: msg, userData: userRegisterData };
+
+    } catch (error) {
+      console.error('Register Error:', error);
+
+      if (error instanceof BadRequestException) throw error;
+
+      throw new InternalServerErrorException({
+        statusCode: 500,
+        success: false,
+        errorMessage: lang === 'ar'
+          ? 'حدث خطأ غير متوقع أثناء التسجيل'
+          : 'Unexpected error occurred during registration',
+      });
+    }
   }
-
-  // تحقق من باقي الحقول بنفس الطريقة...
-
-  if (errors.length > 0) {
-    throw new BadRequestException({
-      message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
-      errors,
-    });
-  }
-  // هاش لكلمة المرور
-  const hashedPassword = await this.hashPasswword(password);
-
-  // إنشاء المستخدم
-  let newUser = new this.userModul({
-    ...registerUserDto,
-    password: hashedPassword,
-    verificationToken: (await randomBytes(32)).toString('hex'),
-  });
-
-  newUser = await newUser.save();
-
-  const link = await this.generateLinke(newUser._id, newUser.verificationToken);
-
-  await this.mailService.sendVerifyEmailTemplate(userEmail, link);
-
-  // استدعاء بيانات المستخدم الجديد للرجوع بها
-  const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
-
-  const msg =
-    lang === 'ar'
-      ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
-      : 'Verification token has been sent to your email. Please verify your email to continue';
-
-  return { message: msg, userData: userRegisterData };
-}
   //============================================================================
   public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
       lang=['en','ar'].includes(lang)?lang:'en';
@@ -157,62 +196,63 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     return { AccessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
-    public async refreshAccessToken(request: Request, response: Response,) {
-    const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
+  public async refreshAccessToken(request: Request, response: Response) {
+  const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
+  const refreshToken = request.cookies['refresh_token'];
 
-    const refreshToken = request.cookies['refresh_token'];
-
-    if (!refreshToken) {
-      const msg =
-        lang === 'ar' ? 'رمز التحديث غير موجود' : 'Refresh token not found';
-      throw new UnauthorizedException(msg);
-    }
-
-    try {
-      const payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      });
-
-      const newAccessToken = await this.generateJWT({
-        id: payload.id,
-        userType: payload.userType,
-      });
-
-      const newRefreshToken = await this.generateRefreshToken({
-        id: payload.id,
-        userType: payload.userType,
-      });
-
-      response.cookie('refresh_token', newRefreshToken, {
-        httpOnly: true,
-        sameSite: 'none',
-        secure:true,
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
-      return { AccessToken: newAccessToken };
-    } catch (err) {
-      let msg = '';
-      if (err.name === 'TokenExpiredError') {
-        msg =
-          lang === 'ar'
-            ? 'انتهت صلاحية رمز التحديث'
-            : 'Refresh token has expired';
-      } else if (err.name === 'JsonWebTokenError') {
-        msg = lang === 'ar' ? 'رمز التحديث غير صالح' : 'Invalid refresh token';
-      } else {
-        msg =
-          lang === 'ar'
-            ? 'فشل في التحقق من رمز التحديث'
-            : 'Failed to verify refresh token';
-      }
-
-      throw new UnauthorizedException(msg);
-    }
+  if (!refreshToken) {
+    const msg = lang === 'ar' ? 'رمز التحديث غير موجود' : 'Refresh token not found';
+    throw new UnauthorizedException(msg);
   }
+
+  try {
+    const payload = await this.jwtService.verifyAsync(refreshToken, {
+      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+    });
+
+    // 1. إنشاء AccessToken و RefreshToken جديدين
+    const newAccessToken = await this.generateJWT({
+      id: payload.id,
+      userType: payload.userType,
+    });
+
+    const newRefreshToken = await this.generateRefreshToken({
+      id: payload.id,
+      userType: payload.userType,
+    });
+
+    // 2. حفظ الـ refresh_token الجديد في الكوكيز
+    response.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      sameSite: 'none',
+      secure: true,
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
+    });
+
+    // 3. إحضار بيانات المستخدم
+    const user = await this.userService.getCurrentUser(payload.id, lang);
+
+    // 4. رجوع البيانات
+    return {
+      accessToken: newAccessToken,
+      userData: user,
+    };
+  } catch (err) {
+    let msg = '';
+    if (err.name === 'TokenExpiredError') {
+      msg = lang === 'ar' ? 'انتهت صلاحية رمز التحديث' : 'Refresh token has expired';
+    } else if (err.name === 'JsonWebTokenError') {
+      msg = lang === 'ar' ? 'رمز التحديث غير صالح' : 'Invalid refresh token';
+    } else {
+      msg = lang === 'ar' ? 'فشل في التحقق من رمز التحديث' : 'Failed to verify refresh token';
+    }
+
+    throw new UnauthorizedException(msg);
+  }
+}
   //============================================================================
-    public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
+  public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const cleanedEmail = userEmail.trim().toLowerCase();
 
@@ -239,7 +279,7 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
         return { message: successMsg };
     }
   //============================================================================
- public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
+  public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const { userEmail, newPassword, resetCode } = resetPasswordDto;
 
@@ -277,7 +317,7 @@ public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en'
     return this.jwtService.signAsync(payload);
   }
   //============================================================================  
-    private async generateRefreshToken(payload: JWTPayloadType): Promise<string> {
+  private async generateRefreshToken(payload: JWTPayloadType): Promise<string> {
         return await this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'),

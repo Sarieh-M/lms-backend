@@ -63,16 +63,25 @@ export class UserService {
       return await this.authProvider.Login(loginDto, response,);
     }
     //============================================================================
-    public async logout(response:Response) {
-      await response.clearCookie('refresh_token', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-      });
+  public async logout(response: Response, lang: 'en' | 'ar' = 'en') {
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
 
-      return { message: 'Logged out successfully' };
-    }
+    const message =
+      lang === 'ar'
+        ? 'تم تسجيل الخروج بنجاح'
+        : 'Logged out successfully';
+
+    return {
+      statusCode: 200,
+      success: true,
+      message,
+    };
+  }
     //============================================================================
     public async refreshAccessToken(request:Request,response:Response){
       return await this.authProvider.refreshAccessToken(request,response);

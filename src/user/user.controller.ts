@@ -58,8 +58,11 @@ public Register(
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
-  logout(@Res({ passthrough: true })response:Response) {
-    return this.userService.logout(response);
+  logout(@Req() req: Request, @Res({ passthrough: true }) response: Response) {
+    const langHeader = req.headers['lang'] || req.headers['language'];
+    const lang = langHeader === 'ar' ? 'ar' : 'en';
+
+    return this.userService.logout(response, lang);
   }
 
 @Get('refresh-token')
