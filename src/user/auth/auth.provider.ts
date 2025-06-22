@@ -47,7 +47,7 @@ export class AuthProvider {
     });
   }
 
-  // تحقق من تكرار اسم المستخدم
+  // تحقق من اسم المستخدم
   if (!userName || typeof userName !== 'string') {
     errors.push({
       field: 'userName',
@@ -63,7 +63,7 @@ export class AuthProvider {
     }
   }
 
-  // تحقق من قوة كلمة المرور
+  // تحقق من كلمة المرور
   if (typeof password !== 'string' || password.length < 6) {
     errors.push({
       field: 'password',
@@ -71,10 +71,10 @@ export class AuthProvider {
     });
   }
 
+  // إذا كان هناك أخطاء، أظهر أول خطأ فقط مع رسالته الخاصة
   if (errors.length > 0) {
-    // نعرض خطأ واحد فقط (أول واحد في المصفوفة)
     throw new BadRequestException({
-      message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
+      message: errors[0].message, // رسالة الخطأ نفسها بدل جملة عامة
       errors: [errors[0]],
     });
   }
@@ -95,7 +95,7 @@ export class AuthProvider {
 
   await this.mailService.sendVerifyEmailTemplate(userEmail, link);
 
-  // استدعاء بيانات المستخدم الجديد للرجوع بها
+  // استدعاء بيانات المستخدم الجديد
   const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
 
   const msg =
