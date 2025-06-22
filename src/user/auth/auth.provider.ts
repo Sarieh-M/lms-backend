@@ -26,91 +26,85 @@ export class AuthProvider {
   ) {}
 
   public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
-    try {
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-      const { userEmail, password, userName } = registerUserDto;
-      const errors = [];
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+  const { userEmail, userName, password } = registerUserDto;
+  const errors = [];
 
-      //  تحقق من البريد الإلكتروني
-      if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
-        errors.push({
-          field: 'userEmail',
-          message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
-        });
-      }
+  // تحقق من صيغة الإيميل
+  if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+    errors.push({
+      field: 'userEmail',
+      message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
+    });
+  }
 
-      //  تحقق من تكرار البريد الإلكتروني
-      const existingUserByEmail = await this.userModul.findOne({ userEmail });
-      if (existingUserByEmail) {
-        errors.push({
-          field: 'userEmail',
-          message: lang === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل' : 'Email is already registered',
-        });
-      }
+  // تحقق من تكرار البريد الإلكتروني
+  const existingEmailUser = await this.userModul.findOne({ userEmail });
+  if (existingEmailUser) {
+    errors.push({
+      field: 'userEmail',
+      message: lang === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل' : 'Email is already registered',
+    });
+  }
 
-      //  تحقق من اسم المستخدم
-      if (!userName || typeof userName !== 'string') {
-        errors.push({
-          field: 'userName',
-          message: lang === 'ar' ? 'اسم المستخدم مطلوب ويجب أن يكون نصاً' : 'Username is required and must be a string',
-        });
-      } else {
-        const existingUserByUsername = await this.userModul.findOne({ userName: userName.toLowerCase() });
-        if (existingUserByUsername) {
-          errors.push({
-            field: 'userName',
-            message: lang === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username is already taken',
-          });
-        }
-      }
-      //  إرجاع أول خطأ فقط
-      if (errors.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          success: false,
-          errorField: errors[0].field,
-          errorMessage: errors[0].message,
-        });
-      }
-
-      //  تجهيز المستخدم
-      const hashedPassword = await this.hashPasswword(password);
-      const verificationToken = randomBytes(32).toString('hex');
-
-      let newUser = new this.userModul({
-        ...registerUserDto,
-        userName: userName.toLowerCase(), // نحول الاسم لصيغة صغيرة
-        password: hashedPassword,
-        verificationToken,
-      });
-
-      newUser = await newUser.save();
-
-      const link = await this.generateLinke(newUser._id, verificationToken);
-      await this.mailService.sendVerifyEmailTemplate(userEmail, link);
-
-      const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
-
-      const msg = lang === 'ar'
-        ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
-        : 'Verification token has been sent to your email. Please verify your email to continue';
-
-      return { message: msg, userData: userRegisterData };
-
-    } catch (error) {
-      console.error('Register Error:', error);
-
-      if (error instanceof BadRequestException) throw error;
-
-      throw new InternalServerErrorException({
-        statusCode: 500,
-        success: false,
-        errorMessage: lang === 'ar'
-          ? 'حدث خطأ غير متوقع أثناء التسجيل'
-          : 'Unexpected error occurred during registration',
+  // تحقق من تكرار اسم المستخدم
+  if (!userName || typeof userName !== 'string') {
+    errors.push({
+      field: 'userName',
+      message: lang === 'ar' ? 'اسم المستخدم مطلوب ويجب أن يكون نصًا' : 'Username is required and must be a string',
+    });
+  } else {
+    const existingUsernameUser = await this.userModul.findOne({ userName });
+    if (existingUsernameUser) {
+      errors.push({
+        field: 'userName',
+        message: lang === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username is already taken',
       });
     }
   }
+
+  // تحقق من قوة كلمة المرور
+  if (typeof password !== 'string' || password.length < 6) {
+    errors.push({
+      field: 'password',
+      message: lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters long',
+    });
+  }
+
+  if (errors.length > 0) {
+    // نعرض خطأ واحد فقط (أول واحد في المصفوفة)
+    throw new BadRequestException({
+      message: lang === 'ar' ? 'يوجد أخطاء في البيانات المُدخلة' : 'There are validation errors',
+      errors: [errors[0]],
+    });
+  }
+
+  // هاش كلمة المرور
+  const hashedPassword = await this.hashPasswword(password);
+
+  // إنشاء المستخدم
+  let newUser = new this.userModul({
+    ...registerUserDto,
+    password: hashedPassword,
+    verificationToken: (await randomBytes(32)).toString('hex'),
+  });
+
+  newUser = await newUser.save();
+
+  const link = await this.generateLinke(newUser._id, newUser.verificationToken);
+
+  await this.mailService.sendVerifyEmailTemplate(userEmail, link);
+
+  // استدعاء بيانات المستخدم الجديد للرجوع بها
+  const userRegisterData = await this.userService.getCurrentUser(newUser._id, lang);
+
+  const msg =
+    lang === 'ar'
+      ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى التحقق للمتابعة'
+      : 'Verification token has been sent to your email. Please verify your email to continue';
+
+  return { message: msg, userData: userRegisterData };
+}
   //============================================================================
   public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
       lang=['en','ar'].includes(lang)?lang:'en';
