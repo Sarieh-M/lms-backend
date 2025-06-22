@@ -23,12 +23,14 @@ export class AuthProvider {
     private readonly mailService: MailService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    
   ) {}
-
+  //This one for Register new user
   public async Register(registerUserDto: RegisterUserDto, lang: 'en' | 'ar' = 'en') {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
   const { userEmail, userName, password } = registerUserDto;
   const errors = [];
+  const existingEmailUser = await this.userModul.findOne({ userEmail });
 
   // تحقق من صيغة الإيميل
   if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
@@ -37,16 +39,13 @@ export class AuthProvider {
       message: lang === 'ar' ? 'البريد الإلكتروني غير صالح' : 'User email is not a valid email address',
     });
   }
-
   // تحقق من تكرار البريد الإلكتروني
-  const existingEmailUser = await this.userModul.findOne({ userEmail });
   if (existingEmailUser) {
     errors.push({
       field: 'userEmail',
       message: lang === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل' : 'Email is already registered',
     });
   }
-
   // تحقق من اسم المستخدم
   if (!userName || typeof userName !== 'string') {
     errors.push({
@@ -62,7 +61,6 @@ export class AuthProvider {
       });
     }
   }
-
   // تحقق من كلمة المرور
   if (typeof password !== 'string' || password.length < 6) {
     errors.push({
@@ -70,7 +68,6 @@ export class AuthProvider {
       message: lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters long',
     });
   }
-
   // إذا كان هناك أخطاء، أظهر أول خطأ فقط مع رسالته الخاصة
   if (errors.length > 0) {
     throw new BadRequestException({
@@ -78,10 +75,8 @@ export class AuthProvider {
       errors: [errors[0]],
     });
   }
-
   // هاش كلمة المرور
   const hashedPassword = await this.hashPasswword(password);
-
   // إنشاء المستخدم
   let newUser = new this.userModul({
     ...registerUserDto,
@@ -104,8 +99,9 @@ export class AuthProvider {
       : 'Verification token has been sent to your email. Please verify your email to continue';
 
   return { message: msg, userData: userRegisterData };
-}
+  }
   //============================================================================
+  //This one for Login user
   public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
       lang=['en','ar'].includes(lang)?lang:'en';
     const { userEmail, password } = loginDto;
@@ -190,6 +186,7 @@ export class AuthProvider {
     return { accessToken: accessToken, userData: userLoginData };
   }
   //============================================================================
+  //This one for refresh token 
   public async refreshAccessToken(request: Request, response: Response) {
   const lang = request.headers['lang'] === 'ar' || request.headers['language'] === 'ar' ? 'ar' : 'en';
   const refreshToken = request.cookies['refresh_token'];
@@ -245,6 +242,7 @@ export class AuthProvider {
   }
 }
   //============================================================================
+  //This one for sent user code to user email 
   public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const cleanedEmail = userEmail.trim().toLowerCase();
@@ -272,6 +270,7 @@ export class AuthProvider {
         return { message: successMsg };
     }
   //============================================================================
+  //This one for reset password and create new one
   public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
         lang = ['en', 'ar'].includes(lang) ? lang : 'en';
         const { userEmail, newPassword, resetCode } = resetPasswordDto;

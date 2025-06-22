@@ -23,10 +23,7 @@ export class UserController {
   // Public Authentication Endpoints
   // ─────────────────────────────────────────────────────────────────────
 
-  /**
-   * Register a new user.
-   * @body RegisterUserDto
-   */
+
 @Post('auth/register')
 @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
 @ApiResponse({ status: 201, description: 'User registered successfully' })
@@ -55,6 +52,7 @@ public Register(
 
   @Post('logout')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })

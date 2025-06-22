@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { UserModule } from './user/user.module';
 import { OrderModule } from './order/order.module';
 import { StudentCourseModule } from './student-course/student-course.module';
@@ -13,6 +13,7 @@ import { MailModule } from './mail/mail.module';
 @Module({
   
   imports: [
+    
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -29,4 +30,5 @@ import { MailModule } from './mail/mail.module';
   controllers: [AppController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule {
+}

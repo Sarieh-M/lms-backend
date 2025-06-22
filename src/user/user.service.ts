@@ -14,26 +14,26 @@ import { Request, Response } from 'express';
 
 @Injectable()
 export class UserService {
-  private roleTranslations = {
-    ADMIN: { en: 'Admin', ar: 'مدير' },
-    INSTRUCTOR: { en: 'Instructor', ar: 'مدرس' },
-    STUDENT: { en: 'Student', ar: 'طالب' },
-  };
-
-  private genderTranslations = {
-    male: { en: 'Male', ar: 'ذكر' },
-    female: { en: 'Female', ar: 'أنثى' },
-    other: { en: 'Other', ar: 'آخر' },
-  };
-
-  constructor(
+    constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
     private readonly authProvider: AuthProvider,
     private readonly studentService: StudentCourseService,
-  ) {}
-
-  public async Register(registerUserDto: RegisterUserDto,lang: 'en' | 'ar' = 'en',userData: JWTPayloadType,) {
+    ) {}
+    //This for language of role
+    private roleTranslations = {
+      ADMIN: { en: 'Admin', ar: 'مدير' },
+      INSTRUCTOR: { en: 'Instructor', ar: 'مدرس' },
+      STUDENT: { en: 'Student', ar: 'طالب' },
+    };
+    //This for language of gender
+    private genderTranslations = {
+      male: { en: 'Male', ar: 'ذكر' },
+      female: { en: 'Female', ar: 'أنثى' },
+      other: { en: 'Other', ar: 'آخر' },
+    };
+    // Register a new user
+    public async Register(registerUserDto: RegisterUserDto,lang: 'en' | 'ar' = 'en',userData: JWTPayloadType,) {
     lang=['en','ar'].includes(lang)?lang:'en'; 
     const { userName } = registerUserDto;
     const errors = [];
@@ -56,21 +56,23 @@ export class UserService {
     registerUserDto.userName = userName.toLowerCase();
 
     return await this.authProvider.Register(registerUserDto,lang);
-  }
+    }
     //============================================================================
+    // Log in a user
     public async Login(loginDto: LoginDto,response: Response,lang: 'en' | 'ar' = 'en') {
       lang=['en','ar'].includes(lang)?lang:'en';
       return await this.authProvider.Login(loginDto, response,);
     }
     //============================================================================
-  public async logout(response: Response, lang: 'en' | 'ar' = 'en') {
-    response.clearCookie('refresh_token', {
+    // Log out the current user
+    public async logout(response: Response, lang: 'en' | 'ar' = 'en') {
+    response.clearCookie('access_token', {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       path: '/',
     });
-
+    
     const message =
       lang === 'ar'
         ? 'تم تسجيل الخروج بنجاح'
@@ -79,13 +81,14 @@ export class UserService {
     return {
       message,
     };
-  }
+    }
     //============================================================================
+    // Refresh the access token (used when the current one expires)
     public async refreshAccessToken(request:Request,response:Response){
       return await this.authProvider.refreshAccessToken(request,response);
     }
     //============================================================================
-    //this one for course.servce (AddNewCourse)
+    // Get current user document (specific usage for course service)
     public async getCurrentUserDocument(id: Types.ObjectId,lang: 'en' | 'ar' = 'en') {
      lang=['en','ar'].includes(lang)?lang:'en';  
     const user = await this.userModel.findById(id);
@@ -95,7 +98,8 @@ export class UserService {
     }
     return user;
     }
-    // this one for all
+    //============================================================================
+    // Get current user (general usage)
     public async getCurrentUser(id: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
       lang=['en','ar'].includes(lang)?lang:'en';
       const user = await this.userModel.findById(id)
@@ -109,12 +113,12 @@ export class UserService {
     gender: this.genderTranslations[user.gender]?.[lang] || user.gender,
     userEmail:user.userEmail,
     enrolledCourses:user.enrolledCourses,
-    lastLogin:user.lastLogin,
     profileImage:user.profileImage,
     age:user.age
   };
     }
     //============================================================================
+    // Get all users with pagination, search, and role filtering
     public async getAllUsers(page: number = 1,limit: number = 10,search?: string,role?: string,lang: 'en' | 'ar' = 'en',) {
         lang=['en','ar'].includes(lang)?lang:'en';
         const query: any = {};
@@ -142,6 +146,7 @@ export class UserService {
          return {success: true,totalUsers,currentPage: page,totalPages,data: usersWithLang,};
     }
     //============================================================================
+    // Update user information
     public async update(
     id: Types.ObjectId,
     currentUser: JWTPayloadType,
@@ -209,6 +214,7 @@ export class UserService {
     return await userFromDB.save();
     }
     //============================================================================
+    // Remove (delete) a user
     public async remove(
     id: Types.ObjectId,
     payload: JWTPayloadType,
@@ -246,6 +252,7 @@ export class UserService {
     throw new ForbiddenException(msg);
     }
     //============================================================================
+    // Verify user's email using a verification token
     public async verifyEmail(id: Types.ObjectId, verificationToken: string,lang: 'en' | 'ar' = 'en'): Promise<{ message: string }> {
       lang=['en','ar'].includes(lang)?lang:'en';
       const userFromDB = await this.userModel.findById(id);
@@ -272,11 +279,13 @@ export class UserService {
       return { message: msg };
     }
     //============================================================================
+    // Send a reset password link to user's email
     public async sendRestPassword(email: string,lang: 'en' | 'ar' = 'en') {
             lang=['en','ar'].includes(lang)?lang:'en';
       return await this.authProvider.SendResetPasswordCode(email,lang);
     }
     //============================================================================
+    // Reset the user's password
     public async resetPassword(body: ResetPasswordDto,lang: 'en' | 'ar' = 'en') {
             lang=['en','ar'].includes(lang)?lang:'en';
       return await this.authProvider.ResetPassword(body,lang);
