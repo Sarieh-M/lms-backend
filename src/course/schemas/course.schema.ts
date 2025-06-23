@@ -2,53 +2,67 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { Document, HydratedDocument, Types } from "mongoose";
 export type CourseDocument = HydratedDocument<Course>;
 
-@Schema({ timestamps: true })
+@Schema()
 export class Course {
-  @Prop({ required: true, type: Object }) // يدعم { en, ar }
+  // Localized title in English and Arabic
+  @Prop({ required: true, type: Object })
   title: { en: string; ar: string };
 
+  // Localized description of the course
   @Prop({ required: true, type: Object })
   description: { en: string; ar: string };
 
+  // Localized category name
   @Prop({ required: true, type: Object })
   category: { en: string; ar: string };
 
-  @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: "User" }], required: true })
+  // Reference to the instructor (User collection)
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
   instructorId: Types.ObjectId;
 
+  // Instructor's display name
   @Prop({ required: true })
   instructorName: string;
 
+  // Localized level information
   @Prop({ required: true, type: Object })
   level: { en: string; ar: string };
 
+  // Primary language of the course (e.g., 'English', 'Arabic')
   @Prop({ required: true })
   primaryLanguage: string;
 
-  @Prop({ required: true,type: Object })
-  subtitle:  { en: string; ar: string };
+  // Localized subtitle
+  @Prop({ required: true, type: Object })
+  subtitle: { en: string; ar: string };
 
+  // Course image URL
   @Prop({ required: true })
   image: string;
 
+  // Localized welcome message for enrolled students
   @Prop({ type: Object })
   welcomeMessage: { en: string; ar: string };
 
+  // Course price
   @Prop({ required: true })
   pricing: number;
 
+  // Learning objectives of the course
   @Prop({ required: true })
   objectives: string;
 
-  @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: "Student" }], default: [] })
+  // List of students enrolled (reference to Student model)
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }], default: [] })
   students: Types.ObjectId[];
 
-  @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: "Lecture" }], default: [] })
+  // Curriculum of the course (list of lecture references)
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lecture' }], default: [] })
   curriculum: Types.ObjectId[];
 
+  // Flag to determine if the course is published
   @Prop({ required: true })
   isPublished: boolean;
-  
 }
 
 // تعريف الـ CourseSchema قبل تصديره
