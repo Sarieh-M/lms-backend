@@ -13,7 +13,6 @@ export class CloudinaryController {
 
   //============================================================================
   @Post('chunk')
-  @UseInterceptors(FilesInterceptor('files'))
   @ApiOperation({ summary: 'Upload a file chunk (supports chunked file uploads)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UploadChunkDto })
