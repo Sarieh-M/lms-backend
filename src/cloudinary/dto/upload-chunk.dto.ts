@@ -1,23 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
 
 export class UploadChunkDto {
-  @ApiProperty({ type: 'string', format: 'binary' })
-  files: any;
-
-  @ApiProperty()
+  @ApiProperty({ description: 'Original file name | اسم الملف الأصلي' })
   @IsString()
+  @IsNotEmpty()
   fileName: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Chunk number (zero-based index) | رقم القطعة (بدءًا من صفر)' })
   @IsNumber()
   chunkNumber: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Total number of chunks | العدد الإجمالي للقطع' })
   @IsNumber()
   totalChunks: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Unique upload session ID | معرف جلسة الرفع الفريد' })
   @IsString()
+  @IsNotEmpty()
   uploadId: string;
 }
