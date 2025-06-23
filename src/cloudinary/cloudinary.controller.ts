@@ -10,7 +10,6 @@ export class CloudinaryController {
   //============================================================================
   //Upload a file chunk [Public]
   @Post('chunk')
-  @UseInterceptors(FilesInterceptor('files'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UploadChunkDto })
   async uploadChunk(@UploadedFiles() files: Express.Multer.File[],@Body() body: UploadChunkDto) {
