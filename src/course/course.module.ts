@@ -12,38 +12,47 @@ import {
   AutoIncrementIDOptions,
 } from '@typegoose/auto-increment';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
-
+// Add this import
+import { Student, StudentCourseSchema } from '../student-course/schemas/student-course.schema'; // Adjust path as needed
 
 @Module({
   controllers: [CourseController],
   providers: [CourseService],
-  imports:[MongooseModule.forFeature([
-    {name:Course.name,schema:CourseSchema},
-    {name:CourseProgress.name,schema:CourseProgressSchema},
-  ]),
-    DatabaseModule,
-    MongooseModule.forFeatureAsync([{
-      name: Course.name,
-      useFactory: () => {
-        const schema = CourseSchema;
-        return schema;
+  imports: [
+    MongooseModule.forFeature([
+      { 
+        name: Course.name, 
+        schema: CourseSchema 
       },
-    },
-    {
-      name: Lecture.name,
-      useFactory: () => {
-        const schema = LectureSchema;
-        schema.plugin(AutoIncrementID, {
-          field: 'public_id',
-          startAt: 1,
-        } satisfies AutoIncrementIDOptions);
-        return schema;
+      { 
+        name: CourseProgress.name, 
+        schema: CourseProgressSchema 
       },
-      inject: [getConnectionToken()],
-    },
+      // Add this line to register StudentModel
+      { 
+        name: Student.name, 
+        schema: StudentCourseSchema 
+      },
     ]),
-    forwardRef(()=>UserModule),JwtModule  
+    DatabaseModule,
+    MongooseModule.forFeatureAsync([
+      // Remove duplicate Course registration
+      {
+        name: Lecture.name,
+        useFactory: () => {
+          const schema = LectureSchema;
+          schema.plugin(AutoIncrementID, {
+            field: 'public_id',
+            startAt: 1,
+          } satisfies AutoIncrementIDOptions);
+          return schema;
+        },
+        inject: [getConnectionToken()],
+      },
+    ]),
+    forwardRef(() => UserModule),
+    JwtModule,
   ],
-  exports:[CourseService]
+  exports: [CourseService]
 })
 export class CourseModule {}
