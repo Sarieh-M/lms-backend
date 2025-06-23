@@ -8,7 +8,7 @@ import { LanguageInterceptor } from './common/interceptors/language.interceptor'
 import * as cookieParser from 'cookie-parser';
 import * as multer from 'multer';
 import * as dotenv from 'dotenv'
-import bodyParser from 'body-parser';
+import * as bodyParser from 'body-parser';
 async function bootstrap() {
   
   const app = await NestFactory.create(AppModule);
