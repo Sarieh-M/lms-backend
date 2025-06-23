@@ -1,34 +1,14 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Param,
-  Post,
-  UploadedFile,
-  UseInterceptors,
-  Logger,
-  UploadedFiles,
-  BadRequestException,
-} from '@nestjs/common';
+import {Body,Controller,Delete,Param,Post,UploadedFiles,BadRequestException,} from '@nestjs/common';
 import { CloudinaryService } from './cloudinary.service';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
 
 @Controller('upload')
 export class CloudinaryController {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
-
+  //============================================================================
   @Post('chunk')
-//   @UseInterceptors(AnyFilesInterceptor())
   async uploadChunk(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body()
-    body: {
-      fileName: string;
-      chunkNumber: number;
-      totalChunks: number;
-      uploadId: string;
-    },
-  ) {
+    @Body()body: {fileName: string;chunkNumber: number;totalChunks: number;uploadId: string;},) {
     console.log('Received files:', files);
     console.log('Body:', body);
 
@@ -44,9 +24,10 @@ export class CloudinaryController {
       body.uploadId,
     );
   }
-
+  //============================================================================
   @Delete('cancel/:uploadId')
   async cancelUpload(@Param('uploadId') uploadId: string) {
     return this.cloudinaryService.cancelUpload(uploadId);
   }
+  //============================================================================
 }

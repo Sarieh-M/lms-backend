@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { promisify } from 'util';
 import { Readable, pipeline } from 'stream';
 import { Logger } from '@nestjs/common';
-import { logger } from '@typegoose/typegoose/lib/logSettings';
 
 const mkdirAsync = promisify(fs.mkdir);
 const writeFileAsync = promisify(fs.writeFile);
@@ -36,14 +35,10 @@ export class CloudinaryService {
       fs.mkdirSync(this.tempDir, { recursive: true });
     }
   }
-
-  async uploadChunkedFile(
-    chunk: Express.Multer.File,
-    fileName: string,
-    chunkNumber: number,
-    totalChunks: number,
-    uploadId: string
-  ): Promise<CloudinaryResponse | { done: boolean; received: number }> {
+  //============================================================================
+  // Handles uploading a single chunk of a file in a chunked upload process
+  async uploadChunkedFile(chunk: Express.Multer.File,fileName: string,chunkNumber: number,totalChunks: number,uploadId: string)
+  : Promise<CloudinaryResponse | { done: boolean; received: number }> {
     const chunkDir = path.join(this.tempDir, uploadId);
     const chunkPath = path.join(chunkDir, chunkNumber.toString());
     const logger = new Logger('CloudinaryService');
@@ -91,12 +86,9 @@ export class CloudinaryService {
       throw error;
     }
   }
-
-  private async reassembleFile(
-    uploadId: string,
-    totalChunks: number,
-    fileName: string
-  ): Promise<string> {
+  //============================================================================
+  // Reassembles all uploaded chunks into a complete file once all chunks are received
+  private async reassembleFile(uploadId: string,totalChunks: number,fileName: string): Promise<string> {
     const chunkDir = path.join(this.tempDir, uploadId);
     const fullFilePath = path.join(chunkDir, fileName);
     const writeStream = fs.createWriteStream(fullFilePath);
@@ -111,10 +103,9 @@ export class CloudinaryService {
     writeStream.end();
     return fullFilePath;
   }
-
-  private async uploadFileFromPath(
-    filePath: string
-  ): Promise<CloudinaryResponse> {
+  //============================================================================
+  // Uploads a file to Cloudinary from a full file path
+  private async uploadFileFromPath(filePath: string): Promise<CloudinaryResponse> {
     return new Promise<CloudinaryResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { resource_type: 'auto' },
@@ -127,7 +118,8 @@ export class CloudinaryService {
       fs.createReadStream(filePath).pipe(uploadStream);
     });
   }
-
+  //============================================================================
+  // Cleans up temporary files (e.g., chunk files) after the upload is complete or canceled
   private async cleanup(uploadId: string): Promise<void> {
     try {
       const chunkDir = path.join(this.tempDir, uploadId);
@@ -147,8 +139,8 @@ export class CloudinaryService {
       console.error('Cleanup error:', cleanupError);
     }
   }
-
-  // Single file upload method
+  //============================================================================
+  // Handles uploading a single (non-chunked) file directly
   uploadFile(file: Express.Multer.File): Promise<CloudinaryResponse> {
     return new Promise<CloudinaryResponse>((resolve, reject) => {
       // Create a readable stream from the file buffer
@@ -168,6 +160,8 @@ export class CloudinaryService {
       bufferStream.pipe(uploadStream);
     });
   }
+  //============================================================================
+  // Cancels an ongoing upload by upload ID, and returns a status message
   async cancelUpload(uploadId: string): Promise<{ cancelled: boolean; message: string }> {
     const chunkDir = path.join(this.tempDir, uploadId);
   
@@ -178,5 +172,6 @@ export class CloudinaryService {
   
     return { cancelled: false, message: `No upload found with ID ${uploadId}.` };
   }
+  //============================================================================
   
 }
