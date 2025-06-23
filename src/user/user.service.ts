@@ -67,14 +67,14 @@ export class UserService {
     // Log out the current user
     public async logout(response: Response, req: Request, lang: 'en' | 'ar' = 'en') {
 
-  response.clearCookie('refresh_token', {
+    response.clearCookie('refresh_token', {
     httpOnly: true,
       sameSite: 'none',
       secure:true,
       path: '/',
-  });
+    });
 
-  const message =
+    const message =
     lang === 'ar'
       ? 'تم تسجيل الخروج بنجاح'
       : 'Logged out successfully';

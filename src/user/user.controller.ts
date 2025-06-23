@@ -51,7 +51,6 @@ public Register(
   }
 
   @Post('logout')
-  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
