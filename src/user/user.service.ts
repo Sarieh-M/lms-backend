@@ -80,7 +80,7 @@ export class UserService {
       : 'Logged out successfully';
 
   return { message };
-}
+    }
     //============================================================================
     // Refresh the access token (used when the current one expires)
     public async refreshAccessToken(request:Request,response:Response){

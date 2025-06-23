@@ -240,7 +240,7 @@ export class AuthProvider {
 
     throw new UnauthorizedException(msg);
   }
-}
+  }
   //============================================================================
   //This one for sent user code to user email 
   public async SendResetPasswordCode(userEmail: string, lang: 'en' | 'ar' = 'en') {
@@ -268,7 +268,7 @@ export class AuthProvider {
             : 'Reset code has been sent to your email';
 
         return { message: successMsg };
-    }
+  }
   //============================================================================
   //This one for reset password and create new one
   public async ResetPassword(resetPasswordDto: ResetPasswordDto, lang: 'en' | 'ar' = 'en') {
@@ -299,7 +299,7 @@ export class AuthProvider {
         return { message: lang === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully' ,
           userName:userFromDB.userName,
         };
-    }
+  }
   //============================================================================
   public async hashPasswword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);

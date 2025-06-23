@@ -12,10 +12,6 @@ import { StudentCourseModule } from 'src/student-course/student-course.module';
 import { LectureProgres, LectureProgresSchema } from 'src/course-progress/schemas/lecture-progress.schema';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
 
-
-
-
-
 @Module({
   controllers: [UserController],
   providers: [UserService, AuthProvider],
