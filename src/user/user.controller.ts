@@ -23,10 +23,7 @@ export class UserController {
   // Public Authentication Endpoints
   // ─────────────────────────────────────────────────────────────────────
 
-  /**
-   * Register a new user.
-   * @body RegisterUserDto
-   */
+
 @Post('auth/register')
 @ApiBody({ description: 'Register User DTO', type: RegisterUserDto })
 @ApiResponse({ status: 201, description: 'User registered successfully' })
@@ -48,7 +45,7 @@ public Register(
   @ApiBody({ description: 'Login User DTO', type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  public Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req() req: any,@CurrentUser() userData: JWTPayloadType,) {
+  public async Login(@Body() loginUser: LoginDto,@Res({ passthrough: true }) response: Response,@Req() req: any,@CurrentUser() userData: JWTPayloadType,) {
     const lang = req.lang||'en';
     return this.userService.Login(loginUser, response, lang);
   }
@@ -58,11 +55,13 @@ public Register(
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user and clear refresh token cookie' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
-  logout(@Res({ passthrough: true })response:Response) {
-    return this.userService.logout(response);
+  logout( @Res({ passthrough: true }) response: Response,@Req() req: any,) {
+    const lang = req.lang||'en';
+    return this.userService.logout(response,req, lang);
   }
 
 @Get('refresh-token')
+@HttpCode(HttpStatus.OK)
 @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
 @ApiResponse({ status: 200, description: 'New access token generated successfully' })
 @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })

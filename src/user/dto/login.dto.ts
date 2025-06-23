@@ -8,7 +8,7 @@ export class LoginDto {
   })
   @IsString() // Minimum required decorator
   userEmail: string;
-
+  //============================================================================
   @ApiProperty({
     description: 'The password of the user',
     example: 'Password@123',

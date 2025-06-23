@@ -25,22 +25,25 @@ async function bootstrap() {
   app.use(cookieParser());
    //===============================
   app.enableCors({
-    origin: ['http://localhost:5173','https://lms-learn-project.vercel.app', ], 
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], 
-    credentials: true, 
+  origin: [
+    'http://localhost:5173',
+    'https://lms-learn-project.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'lang',
-      'language',
-      'Accept',
-    ],
-     exposedHeaders: [
-      'Set-Cookie',
-      'Authorization',
-      'lang',
-    ],
-  });
+    'Content-Type',
+    'Authorization',
+    'lang',
+    'language',
+    'Accept',
+  ],
+  exposedHeaders: [
+    'Set-Cookie',
+    'Authorization',
+    'lang',
+  ],
+  credentials: true,
+});
    //===============================
   app.use(helmet());
    //===============================
