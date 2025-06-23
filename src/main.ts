@@ -8,6 +8,7 @@ import { LanguageInterceptor } from './common/interceptors/language.interceptor'
 import * as cookieParser from 'cookie-parser';
 import * as multer from 'multer';
 import * as dotenv from 'dotenv'
+import bodyParser from 'body-parser';
 async function bootstrap() {
   
   const app = await NestFactory.create(AppModule);
@@ -77,6 +78,10 @@ async function bootstrap() {
       'bearer',
     )
     .build();
+  //===============================
+  //JSON & URL-encoded  زيادة الحد الأقصى لحجم 
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
   //===============================
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
