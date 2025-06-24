@@ -26,8 +26,7 @@ export interface CloudinaryResponse {
 export class CloudinaryService implements OnModuleInit {
   private readonly logger = new Logger(CloudinaryService.name);
   private isConfigured = false;
-  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
-  private uploadProgress = new Map<string,{ totalChunks: number; receivedChunks: number }>();
+
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
@@ -82,58 +81,53 @@ export class CloudinaryService implements OnModuleInit {
       );
     });
   }
-
+  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
+  private uploadProgress = new Map<
+    string,
+    { totalChunks: number; receivedChunks: number }
+  >();
 
   //============================================================================
   // Upload a single chunk of a file (chunked upload)
   async uploadChunkedFile(
-    chunk: Express.Multer.File,
-    fileName: string,
-    chunkNumber: number,
-    totalChunks: number,
-    uploadId: string,
-  ): Promise<CloudinaryResponse | { done: boolean; received: number }> {
-    const chunkDir = path.join(this.tempDir, uploadId);
-    const chunkPath = path.join(chunkDir, chunkNumber.toString());
+  chunk: Express.Multer.File,
+  fileName: string,
+  chunkNumber: number,
+  totalChunks: number,
+  uploadId: string,
+): Promise<CloudinaryResponse | { done: boolean; received: number }> {
+  const chunkDir = path.join(this.tempDir, uploadId);
+  const chunkPath = path.join(chunkDir, chunkNumber.toString());
 
-    try {
-      // Ensure chunk directory exists
-      if (!fs.existsSync(chunkDir)) {
-        await mkdirAsync(chunkDir, { recursive: true });
-      }
-
-      // Save current chunk to disk
-      await writeFileAsync(chunkPath, chunk.buffer);
-
-      // Initialize or update upload progress
-      if (!this.uploadProgress.has(uploadId)) {
-        this.uploadProgress.set(uploadId, { totalChunks, receivedChunks: 0 });
-      }
-
-      const progress = this.uploadProgress.get(uploadId);
-      progress.receivedChunks++;
-
-      // If all chunks received, reassemble and upload full file
-      if (progress.receivedChunks === totalChunks) {
-        const fullFilePath = await this.reassembleFile(
-          uploadId,
-          totalChunks,
-          fileName,
-        );
-        const result = await this.uploadFileFromPath(fullFilePath);
-
-        // Cleanup temp files and progress
-        await this.cleanup(uploadId);
-        return result;
-      }
-
-      // Return progress info if not done yet
-      return { done: false, received: progress.receivedChunks };
-    } catch (error) {
-      await this.cleanup(uploadId);
-      throw error;
+  try {
+    if (!fs.existsSync(chunkDir)) {
+      await mkdirAsync(chunkDir, { recursive: true });
     }
+
+    await writeFileAsync(chunkPath, chunk.buffer);
+
+    if (!this.uploadProgress.has(uploadId)) {
+      this.uploadProgress.set(uploadId, { totalChunks, receivedChunks: 0 });
+    }
+
+    const progress = this.uploadProgress.get(uploadId);
+    progress.receivedChunks++;
+
+    if (progress.receivedChunks === totalChunks) {
+      const fullFilePath = await this.reassembleFile(uploadId, totalChunks, fileName);
+      const result = await this.uploadFileFromPath(fullFilePath);
+      this.uploadProgress.delete(uploadId);
+      await this.cleanup(uploadId);
+      return result;
+    }
+
+    return { done: false, received: progress.receivedChunks };
+
+  } catch (error) {
+    await this.cleanup(uploadId);
+    throw error;
   }
+}
 
   //============================================================================
   // Combine all chunks into one file in correct order
