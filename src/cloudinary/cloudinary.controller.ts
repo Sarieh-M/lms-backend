@@ -1,28 +1,11 @@
-import {
-  Controller,
-  Post,
-  Delete,
-  UploadedFiles,
-  Body,
-  Param,
-  BadRequestException,
-  Logger,
-  Headers,
-  Query,
-  Inject,
-} from '@nestjs/common';
-import {
-  ApiConsumes,
-  ApiBody,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-  ApiQuery,
-} from '@nestjs/swagger';
+import {Controller,Post,Delete,UploadedFiles, Body, Param,BadRequestException,Logger,Headers,Query, Inject, UseGuards,} from '@nestjs/common';
+import {ApiConsumes,ApiBody,ApiOperation,ApiParam,ApiResponse,ApiTags,ApiQuery, ApiBearerAuth,} from '@nestjs/swagger';
 import { CloudinaryService } from './cloudinary.service';
 import { UploadChunkDto } from './dto/upload-chunk.dto';
 import { ConfigService } from '@nestjs/config';
+import { AuthGuard } from 'src/user/guard/auth.guard';
+import { CurrentUser } from 'src/user/decorator/current-user.decorator';
+import { JWTPayloadType } from 'utilitis/types';
 
 @ApiTags('Cloudinary Upload')
 @Controller('api/upload')
@@ -37,23 +20,18 @@ export class CloudinaryController {
 
   //============================================================================
   @Post('chunk')
-  @ApiOperation({
-    summary: 'Upload a file chunk (supports chunked file uploads)',
-  })
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({summary: 'Upload a file chunk (supports chunked file uploads)',})
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UploadChunkDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Chunk uploaded successfully or file upload completed.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request: no file uploaded or invalid input.',
-  })
+  @ApiResponse({status: 201,description: 'Chunk uploaded successfully or file upload completed.',})
+  @ApiResponse({status: 400,description: 'Bad request: no file uploaded or invalid input.',})
   async uploadChunk(
     @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: JWTPayloadType,
     @Body() body: UploadChunkDto,
-    @Headers('accept-language') acceptLanguage?: string,
+    @Headers('lang') acceptLanguage?: string,
   ) {
     const lang = acceptLanguage === 'ar' ? 'ar' : 'en';
 
@@ -65,7 +43,7 @@ export class CloudinaryController {
         errors: message,
       });
     }
-
+    this.logger.log(`User ${user.id} uploading chunk for ${body.fileName}`)
     return this.cloudinaryService.uploadChunkedFile(
       files[0],
       body.fileName,
@@ -77,24 +55,21 @@ export class CloudinaryController {
 
   //============================================================================
   @Delete('cancel/:uploadId')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancel an ongoing chunked upload session' })
-  @ApiParam({
-    name: 'uploadId',
-    type: 'string',
-    description: 'Upload session ID',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Upload session cancelled successfully',
-  })
+  @ApiParam({name: 'uploadId',type: 'string',description: 'Upload session ID',})
+  @ApiResponse({status: 200,description: 'Upload session cancelled successfully',})
   @ApiResponse({ status: 400, description: 'Upload session not found' })
   async cancelUpload(
     @Param('uploadId') uploadId: string,
+    @CurrentUser() user: JWTPayloadType,
     @Headers('accept-language') acceptLanguage?: string,
   ) {
     const lang = acceptLanguage === 'ar' ? 'ar' : 'en';
-
     const result = await this.cloudinaryService.cancelUpload(uploadId);
+    this.logger.log(`User ${user.id} requested cancel for upload id   ${uploadId}`)
+
     if (!result.cancelled) {
       const message =
         lang === 'ar'
@@ -117,34 +92,22 @@ export class CloudinaryController {
   //============================================================================
   @Delete('file/:publicId') // Define your route, e.g., DELETE /api/upload/file/:publicId
   @ApiOperation({ summary: 'Delete an uploaded file from Cloudinary' })
-  @ApiParam({
-    name: 'publicId',
-    type: 'string',
-    description: 'The public ID of the file to delete from Cloudinary',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'resourceType',
-    enum: ['image', 'video', 'raw'],
-    required: false,
-    description: 'The type of resource to delete (defaults to video)',
-  })
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiParam({name: 'publicId',type: 'string',description: 'The public ID of the file to delete from Cloudinary',required: true,})
+  @ApiQuery({name: 'resourceType',enum: ['image', 'video', 'raw'],required: false,description: 'The type of resource to delete (defaults to video)',})
   @ApiResponse({ status: 200, description: 'File deleted successfully' })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid request parameters or file not found',
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error during deletion',
-  })
+  @ApiResponse({status: 400,description: 'Invalid request parameters or file not found',})
+  @ApiResponse({status: 500,description: 'Internal server error during deletion',})
   async deleteFileFromCloudinary(
     // Give it a distinct name to avoid confusion with the service method
     @Param('publicId') publicId: string, // Extract publicId from URL path
+    @CurrentUser() user: JWTPayloadType,
     @Query('resourceType') resourceType?: 'image' | 'video' | 'raw', // Extract optional resourceType from query
     @Headers('accept-language') acceptLanguage?: string,
   ): Promise<{ result: string }> {
     const lang = acceptLanguage === 'ar' ? 'ar' : 'en';
+        this.logger.log(`User ${user.id} deleting file  ${publicId}`)
     this.logger.log(
       `Received request to delete file: ${publicId} (resourceType: ${resourceType || 'video'})`,
     );

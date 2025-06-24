@@ -3,10 +3,13 @@ import { CloudinaryService } from './cloudinary.service';
 import { CloudinaryController } from './cloudinary.controller';
 import { CloudinaryProvider } from './cloudinary.provider';
 import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthGuard } from 'src/user/guard/auth.guard';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
-  imports: [ConfigModule.forRoot()], 
-  providers: [CloudinaryService,CloudinaryProvider],
+  imports: [ConfigModule.forRoot(),JwtModule.register({}),UserModule], 
+  providers: [CloudinaryService,CloudinaryProvider,AuthGuard],
   controllers: [CloudinaryController],
   exports:[CloudinaryProvider,CloudinaryService]
 })

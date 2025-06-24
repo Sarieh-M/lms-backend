@@ -26,7 +26,8 @@ export interface CloudinaryResponse {
 export class CloudinaryService implements OnModuleInit {
   private readonly logger = new Logger(CloudinaryService.name);
   private isConfigured = false;
-
+  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
+  private uploadProgress = new Map<string,{ totalChunks: number; receivedChunks: number }>();
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
@@ -81,11 +82,7 @@ export class CloudinaryService implements OnModuleInit {
       );
     });
   }
-  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
-  private uploadProgress = new Map<
-    string,
-    { totalChunks: number; receivedChunks: number }
-  >();
+
 
   //============================================================================
   // Upload a single chunk of a file (chunked upload)
