@@ -90,61 +90,50 @@ export class CloudinaryController {
   }
 
   //============================================================================
-  @Delete('file/:publicId') // Define your route, e.g., DELETE /api/upload/file/:publicId
+  @Delete('file/:publicId')
   @ApiOperation({ summary: 'Delete an uploaded file from Cloudinary' })
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
-  @ApiParam({name: 'publicId',type: 'string',description: 'The public ID of the file to delete from Cloudinary',required: true,})
-  @ApiQuery({name: 'resourceType',enum: ['image', 'video', 'raw'],required: false,description: 'The type of resource to delete (defaults to video)',})
+  @ApiParam({ name: 'publicId', type: 'string', required: true })
+  @ApiQuery({
+    name: 'resourceType',
+    enum: ['image', 'video', 'raw'],
+    required: false,
+  })
   @ApiResponse({ status: 200, description: 'File deleted successfully' })
-  @ApiResponse({status: 400,description: 'Invalid request parameters or file not found',})
-  @ApiResponse({status: 500,description: 'Internal server error during deletion',})
+  @ApiResponse({ status: 400, description: 'Invalid request parameters' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 500, description: 'Server error' })
   async deleteFileFromCloudinary(
-    // Give it a distinct name to avoid confusion with the service method
-    @Param('publicId') publicId: string, // Extract publicId from URL path
+    @Param('publicId') publicId: string,
     @CurrentUser() user: JWTPayloadType,
-    @Query('resourceType') resourceType?: 'image' | 'video' | 'raw', // Extract optional resourceType from query
+    @Query('resourceType') resourceType?: 'image' | 'video' | 'raw',
     @Headers('accept-language') acceptLanguage?: string,
   ): Promise<{ result: string }> {
     const lang = acceptLanguage === 'ar' ? 'ar' : 'en';
-        this.logger.log(`User ${user.id} deleting file  ${publicId}`)
-    this.logger.log(
-      `Received request to delete file: ${publicId} (resourceType: ${resourceType || 'video'})`,
-    );
-
+    this.logger.log(`User ${user.id} deleting file ${publicId}`);
+    this.logger.log(`Request to delete: ${publicId} as ${resourceType || 'video'}`);
     if (!publicId) {
-      const message =
-        lang === 'ar'
-          ? 'معرف الملف العام مطلوب للحذف.'
-          : 'Public ID is required for file deletion.';
-      this.logger.error(message);
+      const msg = lang === 'ar' ? 'معرف الملف العام مطلوب.' : 'Public ID is required.';
       throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: message,
+        message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
+        errors: msg,
       });
     }
-
     try {
-      // Call the service method to perform the actual deletion
       const result = await this.cloudinaryService.deleteFile(
         publicId,
         resourceType || 'video',
       );
-      return {
-        ...result,
-      };
+      return result;
     } catch (error) {
-      this.logger.error(
-        `Cloudinary deletion error for ${publicId}:`,
-        error.message,
-      );
-      const errorMessage =
+      const errMsg =
         lang === 'ar'
-          ? `فشل حذف الملف: ${error.message || 'خطأ غير معروف'}`
+          ?` فشل حذف الملف: ${error.message || 'خطأ غير معروف'}`
           : `Failed to delete file: ${error.message || 'Unknown error'}`;
       throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There errors',
-        errors: errorMessage,
+        message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
+        errors: errMsg,
       });
     }
   }

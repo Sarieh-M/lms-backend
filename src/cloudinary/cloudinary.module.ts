@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CloudinaryService } from './cloudinary.service';
 import { CloudinaryController } from './cloudinary.controller';
 import { CloudinaryProvider } from './cloudinary.provider';
@@ -8,7 +8,7 @@ import { AuthGuard } from 'src/user/guard/auth.guard';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(),JwtModule.register({}),UserModule], 
+  imports: [ConfigModule,JwtModule.register({}),forwardRef(()=>UserModule,)], 
   providers: [CloudinaryService,CloudinaryProvider,AuthGuard],
   controllers: [CloudinaryController],
   exports:[CloudinaryProvider,CloudinaryService]
