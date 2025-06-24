@@ -1,10 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { v2 as cloudinary } from 'cloudinary';
+import { ConfigService } from '@nestjs/config';
 
 const mkdirAsync = promisify(fs.mkdir);
 const writeFileAsync = promisify(fs.writeFile);
@@ -17,12 +22,70 @@ export interface CloudinaryResponse {
   secure_url: string;
   [key: string]: any;
 }
-
 @Injectable()
-export class CloudinaryService {
+export class CloudinaryService implements OnModuleInit {
+  private readonly logger = new Logger(CloudinaryService.name);
+  private isConfigured = false;
+
+  constructor(private readonly configService: ConfigService) {}
+
+  onModuleInit() {
+    this.configureCloudinary();
+  }
+
+  private configureCloudinary() {
+    const cloudName = this.configService.get('CLOUDINARY_NAME');
+    const apiKey = this.configService.get('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get('CLOUDINARY_API_SECRET');
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      this.logger.error('Cloudinary configuration is missing!');
+      throw new Error('Cloudinary configuration is incomplete');
+    }
+
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+
+    this.isConfigured = true;
+    this.logger.log('Cloudinary successfully configured');
+  }
+
+  async deleteFile(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw' = 'video',
+  ): Promise<{ result: string }> {
+    if (!this.isConfigured) {
+      this.configureCloudinary();
+    }
+
+    return new Promise<{ result: string }>((resolve, reject) => {
+      cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type: resourceType,
+          invalidate: true,
+        },
+        (error, result) => {
+          if (error) {
+            this.logger.error(`Cloudinary deletion error: ${error.message}`);
+            reject(error);
+          } else {
+            this.logger.log(`Deleted ${publicId}: ${result.result}`);
+            resolve(result);
+          }
+        },
+      );
+    });
+  }
   private readonly tempDir = path.join(process.cwd(), 'tempUploads');
-  private uploadProgress = new Map<string, { totalChunks: number; receivedChunks: number }>();
-  private logger = new Logger(CloudinaryService.name);
+  private uploadProgress = new Map<
+    string,
+    { totalChunks: number; receivedChunks: number }
+  >();
 
   //============================================================================
   // Upload a single chunk of a file (chunked upload)
@@ -55,7 +118,11 @@ export class CloudinaryService {
 
       // If all chunks received, reassemble and upload full file
       if (progress.receivedChunks === totalChunks) {
-        const fullFilePath = await this.reassembleFile(uploadId, totalChunks, fileName);
+        const fullFilePath = await this.reassembleFile(
+          uploadId,
+          totalChunks,
+          fileName,
+        );
         const result = await this.uploadFileFromPath(fullFilePath);
 
         // Cleanup temp files and progress
@@ -73,7 +140,11 @@ export class CloudinaryService {
 
   //============================================================================
   // Combine all chunks into one file in correct order
-  private async reassembleFile(uploadId: string, totalChunks: number, fileName: string): Promise<string> {
+  private async reassembleFile(
+    uploadId: string,
+    totalChunks: number,
+    fileName: string,
+  ): Promise<string> {
     const chunkDir = path.join(this.tempDir, uploadId);
     const fullFilePath = path.join(chunkDir, fileName);
     const writeStream = fs.createWriteStream(fullFilePath);
@@ -90,7 +161,9 @@ export class CloudinaryService {
 
   //============================================================================
   // Upload a local file to Cloudinary using upload_stream
-  private async uploadFileFromPath(filePath: string): Promise<CloudinaryResponse> {
+  private async uploadFileFromPath(
+    filePath: string,
+  ): Promise<CloudinaryResponse> {
     return new Promise<CloudinaryResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { resource_type: 'auto' },
@@ -112,7 +185,9 @@ export class CloudinaryService {
 
       if (fs.existsSync(chunkDir)) {
         const files = await readdirAsync(chunkDir);
-        await Promise.all(files.map(file => unlinkAsync(path.join(chunkDir, file))));
+        await Promise.all(
+          files.map((file) => unlinkAsync(path.join(chunkDir, file))),
+        );
         await rmdirAsync(chunkDir);
       }
 
@@ -144,14 +219,22 @@ export class CloudinaryService {
 
   //============================================================================
   // Cancel ongoing upload session and cleanup chunks
-  async cancelUpload(uploadId: string): Promise<{ cancelled: boolean; message: string }> {
+  async cancelUpload(
+    uploadId: string,
+  ): Promise<{ cancelled: boolean; message: string }> {
     const chunkDir = path.join(this.tempDir, uploadId);
 
     if (fs.existsSync(chunkDir)) {
       await this.cleanup(uploadId);
-      return { cancelled: true, message: `Upload ${uploadId} canceled and cleaned up.` };
+      return {
+        cancelled: true,
+        message: `Upload ${uploadId} canceled and cleaned up.`,
+      };
     }
 
-    return { cancelled: false, message: `No upload found with ID ${uploadId}.` };
+    return {
+      cancelled: false,
+      message: `No upload found with ID ${uploadId}.`,
+    };
   }
 }
