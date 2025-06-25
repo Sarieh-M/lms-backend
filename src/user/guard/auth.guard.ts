@@ -39,5 +39,5 @@ export class AuthGuard implements CanActivate {
     } catch (error) {
       throw new UnauthorizedException('Access denied, Invalid token');
     }
-  }
+  } 
 }
