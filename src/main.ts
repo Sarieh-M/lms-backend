@@ -14,6 +14,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   dotenv.config();
+  app.setGlobalPrefix('api');
   // this one for intercepor
   app.useGlobalInterceptors(new LanguageInterceptor());
   //==========================
@@ -30,7 +31,7 @@ async function bootstrap() {
     'http://localhost:5173',
     'https://lms-learn-project.vercel.app'
   ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST','DELETE', 'PUT', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
