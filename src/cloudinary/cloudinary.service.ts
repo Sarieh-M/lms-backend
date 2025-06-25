@@ -49,12 +49,16 @@ export class CloudinaryService implements OnModuleInit {
     this.logger.log('Cloudinary successfully configured');
   }
   // Deletes a file from Cloudinary by public ID and resource type (default to 'video')
-  async deleteFile(publicId: string,resourceType: 'image' | 'video' | 'raw' = 'video',): Promise<{ result: string }> {
+  async deleteFile(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw' = 'video',
+    lang: 'en' | 'ar' = 'en',
+  ): Promise<{ message: string; publicId: string }> {
     if (!this.isConfigured) {
       this.configureCloudinary();
     }
 
-    return new Promise<{ result: string }>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       cloudinary.uploader.destroy(
         publicId,
         {
@@ -63,11 +67,25 @@ export class CloudinaryService implements OnModuleInit {
         },
         (error, result) => {
           if (error) {
-          this.logger.error(`[CloudinaryService]  Deletion error: ${error.message}`);
-          reject(new Error(`Cloudinary deletion error: ${error.message}`));
-        } else {
-          this.logger.log(`[CloudinaryService]  Deleted ${publicId}: ${result.result}`);
-          resolve(result);
+            const errorMessage =
+              lang === 'ar'
+                ?` فشل حذف الملف من Cloudinary: ${error.message}`
+                : `Failed to delete the file from Cloudinary: ${error.message}`;
+
+            this.logger.error(`[CloudinaryService]  ${errorMessage}`);
+            reject(new Error(errorMessage));
+          } else {
+            const successMessage =
+              lang === 'ar'
+                ?` تم حذف الملف بنجاح من Cloudinary`
+                : `File was successfully deleted from Cloudinary`;
+
+            this.logger.log(`[CloudinaryService]  ${successMessage} - ID: ${publicId}`);
+
+            resolve({
+              message: successMessage,
+              publicId,
+            });
           }
         },
       );

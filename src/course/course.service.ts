@@ -10,11 +10,14 @@ import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
 import { UserRole } from 'utilitis/enums';
 import { Student } from 'src/student-course/schemas/student-course.schema';
+import { Category, CategoryDocument } from './schemas/category.schema';
 
 
 @Injectable()
 export class CourseService {
-    constructor(@InjectModel(Course.name)private readonly courseModel: Model<Course>,
+    constructor(
+    @InjectModel(Course.name)private readonly courseModel: Model<Course>,
+    @InjectModel(Category.name)private readonly categoryModel: Model<CategoryDocument>,
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
@@ -254,10 +257,6 @@ export class CourseService {
               en: updateCourseDto.description?.en?.toLowerCase() ?? course.description.en,
               ar: updateCourseDto.description?.ar?.toLowerCase() ?? course.description.ar,
             },
-            category: {
-              en: updateCourseDto.category?.en?.toLowerCase() ?? course.category.en,
-              ar: updateCourseDto.category?.ar?.toLowerCase() ?? course.category.ar,
-            },
             welcomeMessage: {
               en: updateCourseDto.welcomeMessage?.en?.toLowerCase() ?? course.welcomeMessage.en,
               ar: updateCourseDto.welcomeMessage?.ar?.toLowerCase() ?? course.welcomeMessage.ar,
@@ -329,4 +328,16 @@ export class CourseService {
       }
     }
     //============================================================================
+// Function to extract all unique categories with localization
+    async getAllCategories(lang: 'en' | 'ar' = 'en') {
+    const categories = await this.categoryModel.find().sort().lean();
+    return categories.map((cat)=> ({
+    _id: cat._id,
+    title: cat.title?.[lang]??'',
+    description: cat.description?.[lang] ??'',
+    isFeatured: cat.isFeatured ?? false,
+    displayOrder: cat.displayOrder ?? 0,
+  }));
+
+  }
     }

@@ -88,11 +88,15 @@ export class CloudinaryController {
   @ApiResponse({ status: 400, description: 'Invalid request parameters' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Server error' })
-  async deleteFileFromCloudinary(@Param('publicId') publicId: string,@CurrentUser() user: JWTPayloadType,
-    @Query('resourceType') resourceType?: 'image' | 'video' | 'raw',@Headers('accept-language') acceptLanguage?: string,): Promise<{ result: string }> {
+  async deleteFileFromCloudinary(
+    @Param('publicId') publicId: string,
+    @CurrentUser() user: JWTPayloadType,
+    @Query('resourceType') resourceType?: 'image' | 'video' | 'raw',
+    @Headers('accept-language') acceptLanguage?: string,
+  ): Promise<{ message: string; publicId: string }> {
     const lang = acceptLanguage === 'ar' ? 'ar' : 'en';
-    this.logger.log(`[CloudinaryController]  Authenticated user: ${user.id}`);
-    this.logger.log(`[CloudinaryController] Request to delete: ${publicId} as ${resourceType ?? 'video'}`);
+
+    this.logger.log(`[CloudinaryController]  User ${user.id} requested deletion for: ${publicId} as ${resourceType ?? 'video'}`);
 
     if (!publicId) {
       throw new BadRequestException({
@@ -102,14 +106,12 @@ export class CloudinaryController {
     }
 
     try {
-      return await this.cloudinaryService.deleteFile(publicId, resourceType ?? 'video');
+      return await this.cloudinaryService.deleteFile(publicId, resourceType ?? 'video', lang);
     } catch (error) {
-      this.logger.error(`[CloudinaryController]  Error deleting: ${error.message}`);
+      this.logger.error(`[CloudinaryController]  Deletion failed: ${error.message}`);
       throw new BadRequestException({
         message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
-        errors: lang === 'ar'
-          ?` فشل حذف الملف: ${error.message ?? 'خطأ غير معروف'}`
-          : `Failed to delete file: ${error.message ?? 'Unknown error'}`,
+        errors: error.message,
       });
     }
   }

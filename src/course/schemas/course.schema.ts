@@ -13,8 +13,8 @@ export class Course {
   description: { en: string; ar: string };
 
   // Localized category name
-  @Prop({ required: true, type: Object })
-  category: { en: string; ar: string };
+  @Prop({type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true })
+  category: Types.ObjectId;
 
   // Reference to the instructor (User collection)
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
@@ -64,7 +64,6 @@ export class Course {
   @Prop({ required: true })
   isPublished: boolean;
 }
-
 // تعريف الـ CourseSchema قبل تصديره
 const CourseSchema = SchemaFactory.createForClass(Course);
 

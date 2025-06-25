@@ -14,6 +14,7 @@ import {
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
 // Add this import
 import { Student, StudentCourseSchema } from '../student-course/schemas/student-course.schema'; // Adjust path as needed
+import { Category, CategorySchema } from './schemas/category.schema';
 
 @Module({
   controllers: [CourseController],
@@ -32,6 +33,10 @@ import { Student, StudentCourseSchema } from '../student-course/schemas/student-
       { 
         name: Student.name, 
         schema: StudentCourseSchema 
+      },
+      { 
+        name: Category.name, 
+        schema: CategorySchema 
       },
     ]),
     DatabaseModule,

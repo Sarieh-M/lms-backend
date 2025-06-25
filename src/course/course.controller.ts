@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req,Headers } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -116,7 +116,7 @@ export class CourseController {
     );
   }
   // GET COURSE BY ID [PUBLIC]
-  @Get(':id')
+  @Get('getCourseById/:id')
   @ApiOperation({ summary: 'Get course details by ID' })
   @ApiParam({ name: 'id', description: 'Course ID' })
   @ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
@@ -154,4 +154,11 @@ export class CourseController {
 
     return this.courseService.deleteCourse(new Types.ObjectId(id), lang);
   }
+  //Get categories 
+@Get('categories')
+@ApiOperation({ summary: 'Get all available course categories' })
+async getCategories( @Req() req: any) {
+  const lang = req.lang || 'en';
+  return this.courseService.getAllCategories(lang);
+}
 }
