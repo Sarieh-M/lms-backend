@@ -54,10 +54,7 @@ export class CloudinaryService implements OnModuleInit {
     this.logger.log('Cloudinary successfully configured');
   }
 
-  async deleteFile(
-    publicId: string,
-    resourceType: 'image' | 'video' | 'raw' = 'video',
-  ): Promise<{ result: string }> {
+  async deleteFile(publicId: string,resourceType: 'image' | 'video' | 'raw' = 'video',): Promise<{ result: string }> {
     if (!this.isConfigured) {
       this.configureCloudinary();
     }
@@ -71,11 +68,11 @@ export class CloudinaryService implements OnModuleInit {
         },
         (error, result) => {
           if (error) {
-            this.logger.error(`Cloudinary deletion error: ${error.message}`);
-            reject(error);
-          } else {
-            this.logger.log(`Deleted ${publicId}: ${result.result}`);
-            resolve(result);
+          this.logger.error(`[CloudinaryService]  Deletion error: ${error.message}`);
+          reject(new Error(`Cloudinary deletion error: ${error.message}`));
+        } else {
+          this.logger.log(`[CloudinaryService]  Deleted ${publicId}: ${result.result}`);
+          resolve(result);
           }
         },
       );
