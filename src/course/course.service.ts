@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, Req, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, Req, UnauthorizedException } from '@nestjs/common';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -11,25 +11,54 @@ import { Order } from 'src/order/schema/order.schema';
 import { UserRole } from 'utilitis/enums';
 import { Student } from 'src/student-course/schemas/student-course.schema';
 import { Category, CategoryDocument } from './schemas/category.schema';
-
+import { Level } from './schemas/level.schema';
 
 @Injectable()
 export class CourseService {
     constructor(
     @InjectModel(Course.name)private readonly courseModel: Model<Course>,
     @InjectModel(Category.name)private readonly categoryModel: Model<CategoryDocument>,
+    @InjectModel(Level.name)private readonly levelModel: Model<Level>,
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
     {}
     // Add a new course by instructor
     // Validates instructor, creates course, links course to instructor
-    public async AddNewCourse(createCourseDto: CreateCourseDto, instructorId: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
+    public async AddNewCourse(
+      createCourseDto: CreateCourseDto,
+      instructorId: Types.ObjectId,
+      lang: 'en' | 'ar' = 'en'
+    ) {
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
       const user = await this.userService.getCurrentUserDocument(instructorId, lang);
       if (!user) {
-        const message = lang === 'ar' ? '  المستخدم غير موجود' : 'User not found';
+        const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+        throw new NotFoundException(message);
+      }
+
+      const category = await this.categoryModel.findOne({
+        $or: [
+          { 'title.en': createCourseDto.category },
+          { 'title.ar': createCourseDto.category },
+        ]
+      });
+
+      if (!category) {
+        const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
+        throw new NotFoundException(message);
+      }
+
+      const level = await this.levelModel.findOne({
+        $or: [
+          { 'title.en': createCourseDto.level },
+          { 'title.ar': createCourseDto.level },
+        ]
+      });
+
+      if (!level) {
+        const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
         throw new NotFoundException(message);
       }
 
@@ -37,7 +66,9 @@ export class CourseService {
         const newCourse = await this.courseModel.create({
           ...createCourseDto,
           instructorName: user.userName,
-          instructorId: instructorId,
+          instructorId,
+          category: category._id,
+          level: level._id,
           title: {
             en: createCourseDto.title.en.toLowerCase(),
             ar: createCourseDto.title.ar.toLowerCase(),
@@ -45,10 +76,6 @@ export class CourseService {
           description: {
             en: createCourseDto.description.en.toLowerCase(),
             ar: createCourseDto.description.ar.toLowerCase(),
-          },
-          category: {
-            en: createCourseDto.category.en.toLowerCase(),
-            ar: createCourseDto.category.ar.toLowerCase(),
           },
           welcomeMessage: {
             en: createCourseDto.welcomeMessage.en.toLowerCase(),
@@ -58,10 +85,6 @@ export class CourseService {
             en: createCourseDto.subtitle.en.toLowerCase(),
             ar: createCourseDto.subtitle.ar.toLowerCase(),
           },
-          level: {
-            en: createCourseDto.level.en.toLowerCase(),
-            ar: createCourseDto.level.ar.toLowerCase(),
-          },
         });
 
         user.enrolledCourses.push(newCourse._id);
@@ -69,7 +92,7 @@ export class CourseService {
 
         return newCourse;
       } catch (error) {
-        const message = lang === 'ar' ? ' حدث خطأ أثناء إنشاء الدورة' : 'An error occurred while creating the course';
+        const message = lang === 'ar' ? 'حدث خطأ أثناء إنشاء الدورة' : 'An error occurred while creating the course';
         throw new InternalServerErrorException(message);
       }
     }
@@ -113,53 +136,43 @@ export class CourseService {
       limit: number = 10,
       useFilter: boolean = false,
       lang: 'en' | 'ar' = 'en',
-      user?: any // Add user parameter
+      user?: any
     ): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
       lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
       // Base filters
-      const baseFilters = {
-        ...(category ? { [`category.${lang}`]: { $regex: category, $options: 'i' } } : {}),
-        ...(level ? { level: { $regex: level, $options: 'i' } } : {}),
-        ...(primaryLanguage ? { primaryLanguage: { $regex: primaryLanguage, $options: 'i' } } : {}),
-      };
-
+      const baseFilters: any = {};
+      if (level) baseFilters[`level.${lang}`] = { $regex: level, $options: 'i' };
+      if (primaryLanguage) baseFilters.primaryLanguage = { $regex: primaryLanguage, $options: 'i' };
+      if (category) baseFilters[`category.${lang}`] = { $regex: category, $options: 'i' };
+      
       // Role-based filters
       let roleFilter = {};
       if (user) {
         switch (user.userType) {
           case UserRole.ADMIN:
-            // Admin sees all courses
             break;
-            
           case UserRole.TEACHER:
-            // Teacher sees only their own courses
             roleFilter = { instructorId: new Types.ObjectId(user.id) };
             break;
-            
           case UserRole.STUDENT:
-            // Student sees only enrolled courses
             const student = await this.studentModel.findOne({ userId: new Types.ObjectId(user.id) });
             if (student) {
               const enrolledCourseIds = student.courses.flatMap(c => c.idCourses);
               roleFilter = { _id: { $in: enrolledCourseIds } };
             } else {
-              roleFilter = { _id: { $in: [] } }; // No courses if student not found
+              roleFilter = { _id: { $in: [] } };
             }
             break;
-            
-          default:
-            // Unauthenticated/other roles see all courses
         }
       }
 
-      // Combine filters
       const finalFilter = {
         ...(useFilter ? baseFilters : {}),
         ...roleFilter
       };
 
-      // Sorting logic
+      // Sorting
       let sortParam = {};
       switch (sortBy) {
         case 'price-lowtohigh': sortParam = { pricing: 1 }; break;
@@ -172,21 +185,30 @@ export class CourseService {
       const skip = (page - 1) * limit;
       const totalCourses = await this.courseModel.countDocuments(finalFilter);
       const courses = await this.courseModel.find(finalFilter)
+        .populate('category', 'title')
+        .populate('level', 'title')
         .sort(sortParam)
         .skip(skip)
         .limit(limit)
         .exec();
 
-      // Localize courses
-      const localizedCourses = courses.map(course => ({
+      const localizedCourses = courses.map(course => {
+      return {
         ...course.toObject(),
-        title: course.title[lang] || '',
-        category: course.category[lang] || '',
-        description: course.description[lang] || '',
-        welcomeMessage: course.welcomeMessage[lang] || '',
+        title: course.title?.[lang] || '',
+        description: course.description?.[lang] || '',
         subtitle: course.subtitle?.[lang] || '',
-        level: course.level?.[lang] || '',
-      }));
+        welcomeMessage: course.welcomeMessage?.[lang] || '',
+        level: {
+          en: (course.level as any)?.title?.en || '',
+          ar: (course.level as any)?.title?.ar || '',
+        },
+        category: {
+          en: (course.category as any)?.title?.en || '',
+          ar: (course.category as any)?.title?.ar || '',
+        },
+      };
+    });
 
       return {
         totalCourses,
@@ -198,8 +220,14 @@ export class CourseService {
     //============================================================================
     // Get course details by ID with localization
     public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
-      const courseDetails = await this.courseModel.findById(id).populate('curriculum') as any;
-      lang=['en','ar'].includes(lang)?lang:'en';
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+      const courseDetails = await this.courseModel
+        .findById(id)
+        .populate('curriculum')
+        .populate('category')
+        .populate('level') as any;
+
       if (!courseDetails) {
         const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
         throw new NotFoundException(message);
@@ -209,16 +237,16 @@ export class CourseService {
         _id: courseDetails._id,
         instructorId: courseDetails.instructorId,
         instructorName: courseDetails.instructorName,
-        title: courseDetails.title?.[lang]||'',
-        category: courseDetails.category?.[lang]||'',
-        level: courseDetails.level?.[lang]||'',
+        title: courseDetails.title?.[lang] || '',
+        category: (courseDetails.category as any)?.title?.[lang] || '',
+        level: (courseDetails.level as any)?.title?.[lang] || '',
         image: courseDetails.image,
-        subtitle: courseDetails.subtitle?.[lang]||'',
+        subtitle: courseDetails.subtitle?.[lang] || '',
         primaryLanguage: courseDetails.primaryLanguage,
-        description: courseDetails.description?.[lang]||'',
-        welcomeMessage: courseDetails.welcomeMessage?.[lang]||'',
+        description: courseDetails.description?.[lang] || '',
+        welcomeMessage: courseDetails.welcomeMessage?.[lang] || '',
         objectives: Array.isArray(courseDetails.objectives)
-          ? courseDetails.objectives.map((obj: any) => obj?.[lang]||'')
+          ? courseDetails.objectives.map((obj: any) => obj?.[lang] || '')
           : [],
         pricing: courseDetails.pricing,
         curriculum: courseDetails.curriculum,
@@ -230,8 +258,13 @@ export class CourseService {
     }
     //============================================================================
     // Update course by ID if instructor is authorized
-    public async updateCourseByID(id: Types.ObjectId, updateCourseDto: UpdateCourseDto, instructorId: Types.ObjectId, lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
+    public async updateCourseByID(
+      id: Types.ObjectId,
+      updateCourseDto: UpdateCourseDto,
+      instructorId: Types.ObjectId,
+      lang: 'en' | 'ar' = 'en'
+    ) {
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
       const course = await this.courseModel.findById(id);
       if (!course) {
@@ -245,6 +278,44 @@ export class CourseService {
       }
 
       try {
+        // =====================
+        // تحديث التصنيف (category)
+        if (updateCourseDto.category) {
+          const newCategory = await this.categoryModel.findOne({
+            $or: [
+              { 'title.en': updateCourseDto.category },
+              { 'title.ar': updateCourseDto.category },
+            ]
+          }) as HydratedDocument<Category>;
+
+          if (!newCategory) {
+            const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
+            throw new NotFoundException(message);
+          }
+
+          updateCourseDto.category = newCategory._id;
+        }
+
+        // =====================
+        // تحديث المستوى (level)
+        if (updateCourseDto.level) {
+          const newLevel = await this.levelModel.findOne({
+            $or: [
+              { 'title.en': updateCourseDto.level },
+              { 'title.ar': updateCourseDto.level },
+            ]
+          }) as HydratedDocument<Level>;
+
+          if (!newLevel) {
+            const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
+            throw new NotFoundException(message);
+          }
+
+          updateCourseDto.level = newLevel._id as Types.ObjectId;
+        }
+
+        // =====================
+        // التحديث
         const updatedCourse = await this.courseModel.findByIdAndUpdate(
           id,
           {
@@ -266,7 +337,7 @@ export class CourseService {
               ar: updateCourseDto.subtitle?.ar?.toLowerCase() ?? course.subtitle.ar,
             },
           },
-          { new: true },
+          { new: true }
         );
 
         if (!updatedCourse) {
@@ -328,7 +399,7 @@ export class CourseService {
       }
     }
     //============================================================================
-// Function to extract all unique categories with localization
+    // Function to extract all unique categories with localization
     async getAllCategories() {
     const categories = await this.categoryModel.find().sort().lean();
     return categories.map((cat)=> ({
@@ -339,5 +410,14 @@ export class CourseService {
     displayOrder: cat.displayOrder ?? 0,
   }));
 
-  }
+    }
+    // Function to extract all unique levels with localization
+    async getAllLevels() {
+    const level = await this.levelModel.find().sort().lean();
+    return level.map((cat)=> ({
+    _id: cat._id,
+    title: cat.title??''
+  }));
+
+    }
     }

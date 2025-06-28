@@ -160,4 +160,10 @@ export class CourseController {
 async getCategories( ) {
   return this.courseService.getAllCategories();
 }
+  //Get levels 
+@Get('levels')
+@ApiOperation({ summary: 'Get all available course categories' })
+async getlevel( ) {
+  return this.courseService.getAllLevels();
+}
 }

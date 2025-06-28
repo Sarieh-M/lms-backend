@@ -7,14 +7,11 @@ import { Course, CourseSchema } from './schemas/course.schema';
 import { UserModule } from 'src/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { Lecture, LectureSchema } from './schemas/lecture.schema';
-import {
-  AutoIncrementID,
-  AutoIncrementIDOptions,
-} from '@typegoose/auto-increment';
+import {AutoIncrementID,AutoIncrementIDOptions,} from '@typegoose/auto-increment';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
-// Add this import
-import { Student, StudentCourseSchema } from '../student-course/schemas/student-course.schema'; // Adjust path as needed
+import { Student, StudentCourseSchema } from '../student-course/schemas/student-course.schema';
 import { Category, CategorySchema } from './schemas/category.schema';
+import { Level, LevelSchema } from './schemas/level.schema';
 
 @Module({
   controllers: [CourseController],
@@ -29,7 +26,6 @@ import { Category, CategorySchema } from './schemas/category.schema';
         name: CourseProgress.name, 
         schema: CourseProgressSchema 
       },
-      // Add this line to register StudentModel
       { 
         name: Student.name, 
         schema: StudentCourseSchema 
@@ -37,6 +33,10 @@ import { Category, CategorySchema } from './schemas/category.schema';
       { 
         name: Category.name, 
         schema: CategorySchema 
+      },
+      { 
+        name: Level.name, 
+        schema: LevelSchema 
       },
     ]),
     DatabaseModule,

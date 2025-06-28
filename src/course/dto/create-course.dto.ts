@@ -1,6 +1,7 @@
 import {IsNotEmpty,IsObject,ValidateNested,IsUrl,IsString,IsNumber,IsPositive,IsBoolean,IsEnum} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { ObjectId, Types } from 'mongoose';
 
 // Enum for defining primary language options
 export enum PrimaryLanguage {
@@ -41,20 +42,14 @@ export class CreateCourseDto {
   title: LocalizedTextDto;
 
   // Course category in both languages
-  @IsNotEmpty({ message: (args) => args.object['lang'] === 'ar' ? 'التصنيف مطلوب' : 'Category is required' })
-  @IsObject()
-  @ValidateNested()
-  @Type(() => LocalizedTextDto)
+  @IsString({ message: (args) => args.object['lang'] === 'ar' ? 'التصنيف مطلوب' : 'Category is required' })
   @ApiProperty()
-  category: LocalizedTextDto;
+  category: string|Types.ObjectId;
 
   // Course level in both languages
-  @IsNotEmpty({ message: (args) => args.object['lang'] === 'ar' ? 'المستوى مطلوب' : 'Level is required' })
-  @IsObject()
-  @ValidateNested()
-  @Type(() => LocalizedLevelDto)
+  @IsString({ message: (args) => args.object['lang'] === 'ar' ? 'المستوى مطلوب' : 'Level is required' })
   @ApiProperty()
-  level: LocalizedLevelDto;
+  level: string|Types.ObjectId;
 
   // Primary language of the course: EN or AR
   @IsEnum(PrimaryLanguage, {
