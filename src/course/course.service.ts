@@ -329,12 +329,12 @@ export class CourseService {
     }
     //============================================================================
 // Function to extract all unique categories with localization
-    async getAllCategories(lang: 'en' | 'ar' = 'en') {
+    async getAllCategories() {
     const categories = await this.categoryModel.find().sort().lean();
     return categories.map((cat)=> ({
     _id: cat._id,
-    title: cat.title?.[lang]??'',
-    description: cat.description?.[lang] ??'',
+    title: cat.title??'',
+    description: cat.description ??'',
     isFeatured: cat.isFeatured ?? false,
     displayOrder: cat.displayOrder ?? 0,
   }));

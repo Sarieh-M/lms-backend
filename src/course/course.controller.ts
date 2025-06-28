@@ -157,8 +157,7 @@ export class CourseController {
   //Get categories 
 @Get('categories')
 @ApiOperation({ summary: 'Get all available course categories' })
-async getCategories( @Req() req: any) {
-  const lang = req.lang || 'en';
-  return this.courseService.getAllCategories(lang);
+async getCategories( ) {
+  return this.courseService.getAllCategories();
 }
 }
