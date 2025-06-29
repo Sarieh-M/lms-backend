@@ -96,9 +96,11 @@ export class CreateCourseDto {
   pricing: number;
 
   // Text describing course objectives
-  @IsString({ message: (args) => args.object['lang'] === 'ar' ? 'الأهداف مطلوبة' : 'Objectives are required' })
+  @IsNotEmpty({ message: (args) => args.object['lang'] === 'ar' ? 'الأهداف مطلوبة' : 'Objectives are required' })
+  @ValidateNested()
+  @Type(() => LocalizedTextDto)
   @ApiProperty()
-  objectives: string;
+  objectives: LocalizedTextDto;
 
   // Whether the course is published or not
   @IsBoolean({ message: (args) => args.object['lang'] === 'ar' ? 'حالة النشر مطلوبة' : 'Published status is required' })
