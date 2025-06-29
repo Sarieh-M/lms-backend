@@ -49,8 +49,8 @@ export class Course {
   pricing: number;
 
   // Learning objectives of the course
-  @Prop({ required: true })
-  objectives: string;
+  @Prop({ type: Object})
+  objectives:{ en: string; ar: string };
 
   // List of students enrolled (reference to Student model)
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }], default: [] })

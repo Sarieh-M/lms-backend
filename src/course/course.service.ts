@@ -95,6 +95,10 @@ export class CourseService {
             en: createCourseDto.subtitle.en.toLowerCase(),
             ar: createCourseDto.subtitle.ar.toLowerCase(),
           },
+          objectives: {
+            en: createCourseDto.objectives.en.toLowerCase(),
+            ar: createCourseDto.objectives.ar.toLowerCase(),
+          },
           curriculum: lectureIds,
         });
 
