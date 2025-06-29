@@ -34,33 +34,6 @@ export class CourseController {
     const lang = req.lang || 'en';
     return this.courseService.AddNewCourse(createCourseDto, user.id, lang);
   }
-  // ADD NEW LECTURE TO COURSE[Admin & Teacher]
-  @Post(':idCourse/add-lecture-to-course')
-  @ApiBearerAuth('JWT')
-  @UseGuards(AuthGuard, AuthRolesGuard)
-  @Roles('admin', 'teacher')
-  @ApiOperation({ summary: 'Add a lecture to an existing course' })
-  @ApiResponse({ status: 201, description: 'Lecture added successfully' })
-  @ApiResponse({ status: 403, description: 'Only admins or teachers can add lectures' })
-  @ApiParam({ name: 'idCourse', description: 'MongoDB ObjectId of the course' })
-  @ApiBody({ type: LectureDTO })
-  public AddLectureToCourse(
-    @Param('idCourse') idCourse: string,
-    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-    lectureDto: LectureDTO,
-    @Req() req: any,
-  ) {
-    const lang = req.lang || 'en';
-
-    if (!Types.ObjectId.isValid(idCourse)) {
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
-        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      });
-    }
-
-    return this.courseService.AddLectureToCourse(new Types.ObjectId(idCourse), lectureDto, lang);
-  }
   // UPDATE COURSE BY ID[Admin & Teacher]
   @Patch('update/:id')
   @ApiBearerAuth('JWT')
@@ -155,15 +128,15 @@ export class CourseController {
     return this.courseService.deleteCourse(new Types.ObjectId(id), lang);
   }
   //Get categories 
-@Get('categories')
-@ApiOperation({ summary: 'Get all available course categories' })
-async getCategories( ) {
-  return this.courseService.getAllCategories();
-}
+  @Get('categories')
+  @ApiOperation({ summary: 'Get all available course categories' })
+  async getCategories( ) {
+    return this.courseService.getAllCategories();
+  }
   //Get levels 
-@Get('levels')
-@ApiOperation({ summary: 'Get all available course categories' })
-async getlevel( ) {
-  return this.courseService.getAllLevels();
-}
+  @Get('levels')
+  @ApiOperation({ summary: 'Get all available course categories' })
+  async getlevel( ) {
+    return this.courseService.getAllLevels();
+  }
 }

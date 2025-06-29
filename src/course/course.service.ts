@@ -25,11 +25,7 @@ export class CourseService {
     {}
     // Add a new course by instructor
     // Validates instructor, creates course, links course to instructor
-    public async AddNewCourse(
-      createCourseDto: CreateCourseDto,
-      instructorId: Types.ObjectId,
-      lang: 'en' | 'ar' = 'en'
-    ) {
+    public async AddNewCourse(createCourseDto: CreateCourseDto,instructorId: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
       lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
       const user = await this.userService.getCurrentUserDocument(instructorId, lang);
@@ -42,7 +38,7 @@ export class CourseService {
         $or: [
           { 'title.en': createCourseDto.category },
           { 'title.ar': createCourseDto.category },
-        ]
+        ],
       });
 
       if (!category) {
@@ -54,7 +50,7 @@ export class CourseService {
         $or: [
           { 'title.en': createCourseDto.level },
           { 'title.ar': createCourseDto.level },
-        ]
+        ],
       });
 
       if (!level) {
@@ -63,6 +59,21 @@ export class CourseService {
       }
 
       try {
+        const lectureIds = [];
+
+        if (createCourseDto.lectures && createCourseDto.lectures.length > 0) {
+          for (const lectureDto of createCourseDto.lectures) {
+            const lecture = await this.lectureModel.create({
+              ...lectureDto,
+              title: {
+                en: lectureDto.title.en.toLowerCase(),
+                ar: lectureDto.title.ar.toLowerCase(),
+              },
+            });
+            lectureIds.push(lecture._id);
+          }
+        }
+
         const newCourse = await this.courseModel.create({
           ...createCourseDto,
           instructorName: user.userName,
@@ -85,6 +96,7 @@ export class CourseService {
             en: createCourseDto.subtitle.en.toLowerCase(),
             ar: createCourseDto.subtitle.ar.toLowerCase(),
           },
+          curriculum: lectureIds,
         });
 
         user.enrolledCourses.push(newCourse._id);
@@ -92,36 +104,10 @@ export class CourseService {
 
         return newCourse;
       } catch (error) {
-        const message = lang === 'ar' ? 'حدث خطأ أثناء إنشاء الدورة' : 'An error occurred while creating the course';
-        throw new InternalServerErrorException(message);
-      }
-    }
-    //============================================================================
-    // Add a lecture to a course
-    // Creates lecture and adds it to course curriculum
-    public async AddLectureToCourse(idCourse: Types.ObjectId, lectureDto: LectureDTO,lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
-
-      try {
-        const lecture = await this.lectureModel.create({
-          ...lectureDto,
-          title: {
-            en: lectureDto.title.en.toLowerCase(),
-            ar: lectureDto.title.ar.toLowerCase(),
-          },
-        });
-
-        const course = await this.courseModel.findById(idCourse);
-        if (!course) {
-          const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
-          throw new NotFoundException(message);
-        }
-
-        course.curriculum.push(lecture._id);
-        const updatedCourse = await course.save();
-        return updatedCourse;
-      } catch (error) {
-        const message = lang === 'ar' ? 'حدث خطأ أثناء إضافة المحاضرة' : 'An error occurred while adding the lecture';
+        const message =
+          lang === 'ar'
+            ? 'حدث خطأ أثناء إنشاء الدورة'
+            : 'An error occurred while creating the course';
         throw new InternalServerErrorException(message);
       }
     }
@@ -258,14 +244,10 @@ export class CourseService {
     }
     //============================================================================
     // Update course by ID if instructor is authorized
-    public async updateCourseByID(
-      id: Types.ObjectId,
-      updateCourseDto: UpdateCourseDto,
-      instructorId: Types.ObjectId,
-      lang: 'en' | 'ar' = 'en'
-    ) {
+    public async updateCourseByID(id: Types.ObjectId,updateCourseDto: UpdateCourseDto,
+      instructorId: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
+  
       lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
       const course = await this.courseModel.findById(id);
       if (!course) {
         const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
@@ -278,14 +260,13 @@ export class CourseService {
       }
 
       try {
-        // =====================
-        // تحديث التصنيف (category)
+        //==================categories
         if (updateCourseDto.category) {
           const newCategory = await this.categoryModel.findOne({
             $or: [
               { 'title.en': updateCourseDto.category },
               { 'title.ar': updateCourseDto.category },
-            ]
+            ],
           }) as HydratedDocument<Category>;
 
           if (!newCategory) {
@@ -295,15 +276,13 @@ export class CourseService {
 
           updateCourseDto.category = newCategory._id;
         }
-
-        // =====================
-        // تحديث المستوى (level)
+        //==================levels
         if (updateCourseDto.level) {
           const newLevel = await this.levelModel.findOne({
             $or: [
               { 'title.en': updateCourseDto.level },
               { 'title.ar': updateCourseDto.level },
-            ]
+            ],
           }) as HydratedDocument<Level>;
 
           if (!newLevel) {
@@ -314,8 +293,22 @@ export class CourseService {
           updateCourseDto.level = newLevel._id as Types.ObjectId;
         }
 
-        // =====================
-        // التحديث
+        //  This one for lecture
+        if (updateCourseDto.lectures && updateCourseDto.lectures.length > 0) {
+          for (const lectureDto of updateCourseDto.lectures) {
+            const newLecture = await this.lectureModel.create({
+              ...lectureDto,
+              title: {
+                en: lectureDto.title.en.toLowerCase(),
+                ar: lectureDto.title.ar.toLowerCase(),
+              },
+            });
+            course.curriculum.push(newLecture._id);
+          }
+          await course.save(); 
+        }
+
+        
         const updatedCourse = await this.courseModel.findByIdAndUpdate(
           id,
           {
@@ -337,7 +330,7 @@ export class CourseService {
               ar: updateCourseDto.subtitle?.ar?.toLowerCase() ?? course.subtitle.ar,
             },
           },
-          { new: true }
+          { new: true },
         );
 
         if (!updatedCourse) {

@@ -1,7 +1,8 @@
-import {IsNotEmpty,IsObject,ValidateNested,IsUrl,IsString,IsNumber,IsPositive,IsBoolean,IsEnum} from 'class-validator';
+import {IsNotEmpty,IsObject,ValidateNested,IsUrl,IsString,IsNumber,IsPositive,IsBoolean,IsEnum, IsOptional, IsArray} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ObjectId, Types } from 'mongoose';
+import { LectureDTO } from './lecture-course.dto';
 
 // Enum for defining primary language options
 export enum PrimaryLanguage {
@@ -103,4 +104,14 @@ export class CreateCourseDto {
   @IsBoolean({ message: (args) => args.object['lang'] === 'ar' ? 'حالة النشر مطلوبة' : 'Published status is required' })
   @ApiProperty()
   isPublished: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LectureDTO)
+  @ApiProperty({
+    description: 'Optional array of lectures to be added during course creation',
+    type: [LectureDTO],
+  })
+  lectures?: LectureDTO[];
 }
