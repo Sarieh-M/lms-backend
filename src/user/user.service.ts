@@ -11,12 +11,18 @@ import { UserRole } from 'utilitis/enums';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { StudentCourseService } from 'src/student-course/student-course.service';
 import { Request, Response } from 'express';
+import { Order } from 'src/order/schema/order.schema';
+import { Course } from 'src/course/schemas/course.schema';
 
 @Injectable()
 export class UserService {
     constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
+    @InjectModel(Order.name)
+    private readonly orderModel: Model<Order>,
+    @InjectModel(Course.name)
+    private readonly courseModel: Model<Course>,
     private readonly authProvider: AuthProvider,
     private readonly studentService: StudentCourseService,
     ) {}
@@ -290,4 +296,61 @@ export class UserService {
       return await this.authProvider.ResetPassword(body,lang);
     }
     //============================================================================
+    // Dashboard Statistics
+    //============================================================================
+    public async getTotalUsers(): Promise<number> {
+      return this.userModel.countDocuments();
+    }
+
+    public async getTotalTeachers(): Promise<number> {
+      // Note: The role is 'INSTRUCTOR' as per your roleTranslations
+      return this.userModel.countDocuments({ role: UserRole.TEACHER });
+    }
+
+    public async getTotalStudents(): Promise<number> {
+      return this.userModel.countDocuments({ role: UserRole.STUDENT });
+    }
+
+    public async getTotalCourses(): Promise<number> {
+      return this.courseModel.countDocuments();
+    }
+
+    public async getTotalRevenue(): Promise<number> {
+      // From your order.schema.ts, we use `coursePricing` for the amount.
+      // We assume a successful order has paymentStatus === 'succeeded'.
+      // Please adjust the status string if it's different in your application.
+      const result = await this.orderModel.aggregate([
+        {
+          $match: { paymentStatus: 'paid' },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$coursePricing' },
+          },
+        },
+      ]);
+
+      return result.length > 0 ? result[0].total : 0;
+    }
+
+    public async getDashboardStats() {
+      const [totalUsers, totalTeachers, totalStudents, totalCourses, totalRevenue] =
+        await Promise.all([
+          this.getTotalUsers(),
+          this.getTotalTeachers(),
+          this.getTotalStudents(),
+          this.getTotalCourses(),
+          this.getTotalRevenue(),
+        ]);
+
+      return {
+        totalUsers,
+        totalTeachers,
+        totalStudents,
+        totalCourses,
+        totalRevenue,
+      };
+    }
+    
   }

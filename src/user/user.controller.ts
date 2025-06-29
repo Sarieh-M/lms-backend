@@ -168,4 +168,16 @@ export class UserController {
     const lang = req.lang||'en';
     return this.userService.remove(id, payload,lang);
   }
+
+  //Get dashboard statistics [Admin only]
+  @Get('stats')
+  @UseGuards(AuthGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Get dashboard statistics (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Dashboard statistics retrieved successfully.' })
+  @ApiResponse({ status: 403, description: 'Forbidden. Only admins can access this resource.' })
+  public getDashboardStats() {
+    return this.userService.getDashboardStats();
+  }
 }

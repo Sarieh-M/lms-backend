@@ -8,6 +8,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
 import { DatabaseModule } from 'src/db/database.module';
 import { MailModule } from 'src/mail/mail.module';
+import { Course, CourseSchema } from 'src/course/schemas/course.schema';
+import { Order, OrderSchema } from 'src/order/schema/order.schema';
 import { StudentCourseModule } from 'src/student-course/student-course.module';
 import { LectureProgres, LectureProgresSchema } from 'src/course-progress/schemas/lecture-progress.schema';
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
@@ -18,7 +20,13 @@ import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schema
   imports:[
     DatabaseModule,
     MailModule,
-    MongooseModule.forFeature([{name:User.name,schema:UserSchema},{name:CourseProgress.name,schema:CourseProgressSchema},{ name: LectureProgres.name, schema: LectureProgresSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Order.name, schema: OrderSchema },
+      { name: Course.name, schema: CourseSchema },
+      { name: CourseProgress.name, schema: CourseProgressSchema },
+      { name: LectureProgres.name, schema: LectureProgresSchema },
+    ]),
     forwardRef(()=>StudentCourseModule),
     JwtModule.registerAsync({
       inject:[ConfigService],
