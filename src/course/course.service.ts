@@ -1,11 +1,10 @@
-import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, Req, UnauthorizedException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { HydratedDocument, Model, Types } from 'mongoose';
 import { Course } from './schemas/course.schema';
 import { UserService } from 'src/user/user.service';
-import { LectureDTO } from './dto/lecture-course.dto';
 import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
 import { UserRole } from 'utilitis/enums';
@@ -364,7 +363,6 @@ export class CourseService {
 
       course.students.push(user._id);
 
-      // لازم تحفظ التغييرات لو الكورس كائن من Mongoose
       await this.courseModel.findByIdAndUpdate(order.courseId, { students: course.students });
     }
     //============================================================================
@@ -412,5 +410,45 @@ export class CourseService {
     title: cat.title??''
   }));
 
+    }
+    // Get all courses with filters, sorting, pagination, and role-based access for teacher 
+    public async getCoursesByInstructor(instructorId: string,lang: 'en' | 'ar' = 'en',page: number = 1,limit: number = 10): 
+    Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+      const filter = { instructorId: new Types.ObjectId(instructorId) };
+
+      const skip = (page - 1) * limit;
+      const totalCourses = await this.courseModel.countDocuments(filter);
+
+      const courses = await this.courseModel.find(filter)
+        .populate('category', 'title')
+        .populate('level', 'title')
+        .skip(skip)
+        .limit(limit)
+        .exec();
+
+      const localizedCourses = courses.map(course => ({
+        ...course.toObject(),
+        title: course.title?.[lang] || '',
+        description: course.description?.[lang] || '',
+        subtitle: course.subtitle?.[lang] || '',
+        welcomeMessage: course.welcomeMessage?.[lang] || '',
+        level: {
+          en: (course.level as any)?.title?.en || '',
+          ar: (course.level as any)?.title?.ar || '',
+        },
+        category: {
+          en: (course.category as any)?.title?.en || '',
+          ar: (course.category as any)?.title?.ar || '',
+        },
+      }));
+
+      return {
+        totalCourses,
+        totalPages: Math.ceil(totalCourses / limit),
+        currentPage: page,
+        courses: localizedCourses,
+      };
     }
     }

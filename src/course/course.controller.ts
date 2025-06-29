@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req,Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -8,7 +8,6 @@ import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
 import { Types } from 'mongoose';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { LectureDTO } from './dto/lecture-course.dto';
 import { AuthGuard } from 'src/user/guard/auth.guard';
 
 @ApiTags('Courses')
@@ -59,6 +58,22 @@ export class CourseController {
     }
 
     return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id, lang);
+  }
+  // get course for teacher
+  @Get('my-courses')
+  @UseGuards(AuthGuard, AuthRolesGuard)
+  @Roles('teacher') 
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Get courses of the current instructor' })
+  @ApiResponse({ status: 200, description: 'Instructor courses retrieved successfully' })
+  public getInstructorCourses(
+    @CurrentUser() user: JWTPayloadType,
+    @Req() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10
+  ) {
+    const lang = req.lang || 'en';
+    return this.courseService.getCoursesByInstructor(user.id.toString(), lang, page, limit);
   }
   // GET ALL COURSES [PUBLIC]
   @Get()
