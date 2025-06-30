@@ -48,94 +48,7 @@ export class CloudinaryService implements OnModuleInit {
     this.isConfigured = true;
     this.logger.log('Cloudinary successfully configured');
   }
-  // Deletes a file from Cloudinary by public ID and resource type (default to 'video')
-  async deleteFile(
-    publicId: string,
-    resourceType: 'image' | 'video' | 'raw' = 'video',
-    lang: 'en' | 'ar' = 'en',
-  ): Promise<{ message: string; publicId: string }> {
-    if (!this.isConfigured) {
-      this.configureCloudinary();
-    }
-
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.destroy(
-        publicId,
-        {
-          resource_type: resourceType,
-          invalidate: true,
-        },
-        (error, result) => {
-          if (error) {
-            const errorMessage =
-              lang === 'ar'
-                ?` فشل حذف الملف من Cloudinary: ${error.message}`
-                : `Failed to delete the file from Cloudinary: ${error.message}`;
-
-            this.logger.error(`[CloudinaryService]  ${errorMessage}`);
-            reject(new Error(errorMessage));
-          } else {
-            const successMessage =
-              lang === 'ar'
-                ?` تم حذف الملف بنجاح من Cloudinary`
-                : `File was successfully deleted from Cloudinary`;
-
-            this.logger.log(`[CloudinaryService]  ${successMessage} - ID: ${publicId}`);
-
-            resolve({
-              message: successMessage,
-              publicId,
-            });
-          }
-        },
-      );
-    });
-  }
-  // Directory path to temporarily store uploaded files before processing
-  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
-  // Track upload progress for chunked uploads using a map of uploadId to chunk info
-  private uploadProgress = new Map<string,{ totalChunks: number; receivedChunks: number }>();
-  // Upload a single chunk of a file (chunked upload)
-  async uploadChunkedFile(
-  chunk: Express.Multer.File,
-  fileName: string,
-  chunkNumber: number,
-  totalChunks: number,
-  uploadId: string,
-): Promise<CloudinaryResponse | { done: boolean; received: number }> {
-  const chunkDir = path.join(this.tempDir, uploadId);
-  const chunkPath = path.join(chunkDir, chunkNumber.toString());
-
-  try {
-    if (!fs.existsSync(chunkDir)) {
-      await mkdirAsync(chunkDir, { recursive: true });
-    }
-
-    await writeFileAsync(chunkPath, chunk.buffer);
-
-    if (!this.uploadProgress.has(uploadId)) {
-      this.uploadProgress.set(uploadId, { totalChunks, receivedChunks: 0 });
-    }
-
-    const progress = this.uploadProgress.get(uploadId);
-    progress.receivedChunks++;
-
-    if (progress.receivedChunks === totalChunks) {
-      const fullFilePath = await this.reassembleFile(uploadId, totalChunks, fileName);
-      const result = await this.uploadFileFromPath(fullFilePath);
-      this.uploadProgress.delete(uploadId);
-      await this.cleanup(uploadId);
-      return result;
-    }
-
-    return { done: false, received: progress.receivedChunks };
-
-  } catch (error) {
-    await this.cleanup(uploadId);
-    throw error;
-  }
-  }
-  // Combine all chunks into one file in correct order
+    // Combine all chunks into one file in correct order
   private async reassembleFile(
     uploadId: string,
     totalChunks: number,
@@ -188,6 +101,50 @@ export class CloudinaryService implements OnModuleInit {
       this.logger.error('Cleanup error:', err);
     }
   }
+  // Directory path to temporarily store uploaded files before processing
+  private readonly tempDir = path.join(process.cwd(), 'tempUploads');
+  // Track upload progress for chunked uploads using a map of uploadId to chunk info
+  private uploadProgress = new Map<string,{ totalChunks: number; receivedChunks: number }>();
+  // Upload a single chunk of a file (chunked upload)
+  async uploadChunkedFile(
+  chunk: Express.Multer.File,
+  fileName: string,
+  chunkNumber: number,
+  totalChunks: number,
+  uploadId: string,
+): Promise<CloudinaryResponse | { done: boolean; received: number }> {
+  const chunkDir = path.join(this.tempDir, uploadId);
+  const chunkPath = path.join(chunkDir, chunkNumber.toString());
+
+  try {
+    if (!fs.existsSync(chunkDir)) {
+      await mkdirAsync(chunkDir, { recursive: true });
+    }
+
+    await writeFileAsync(chunkPath, chunk.buffer);
+
+    if (!this.uploadProgress.has(uploadId)) {
+      this.uploadProgress.set(uploadId, { totalChunks, receivedChunks: 0 });
+    }
+
+    const progress = this.uploadProgress.get(uploadId);
+    progress.receivedChunks++;
+
+    if (progress.receivedChunks === totalChunks) {
+      const fullFilePath = await this.reassembleFile(uploadId, totalChunks, fileName);
+      const result = await this.uploadFileFromPath(fullFilePath);
+      this.uploadProgress.delete(uploadId);
+      await this.cleanup(uploadId);
+      return result;
+    }
+
+    return { done: false, received: progress.receivedChunks };
+
+  } catch (error) {
+    await this.cleanup(uploadId);
+    throw error;
+  }
+  }
   // Upload a single file directly (non-chunked)
   uploadFile(file: Express.Multer.File): Promise<CloudinaryResponse> {
     return new Promise<CloudinaryResponse>((resolve, reject) => {
@@ -224,5 +181,48 @@ export class CloudinaryService implements OnModuleInit {
       cancelled: false,
       message: `No upload found with ID ${uploadId}.`,
     };
+  }
+    // Deletes a file from Cloudinary by public ID and resource type (default to 'video')
+  async deleteFile(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw' = 'video',
+    lang: 'en' | 'ar' = 'en',
+  ): Promise<{ message: string; publicId: string }> {
+    if (!this.isConfigured) {
+      this.configureCloudinary();
+    }
+
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type: resourceType,
+          invalidate: true,
+        },
+        (error, result) => {
+          if (error) {
+            const errorMessage =
+              lang === 'ar'
+                ?` فشل حذف الملف من Cloudinary: ${error.message}`
+                : `Failed to delete the file from Cloudinary: ${error.message}`;
+
+            this.logger.error(`[CloudinaryService]  ${errorMessage}`);
+            reject(new Error(errorMessage));
+          } else {
+            const successMessage =
+              lang === 'ar'
+                ?` تم حذف الملف بنجاح من Cloudinary`
+                : `File was successfully deleted from Cloudinary`;
+
+            this.logger.log(`[CloudinaryService]  ${successMessage} - ID: ${publicId}`);
+
+            resolve({
+              message: successMessage,
+              publicId,
+            });
+          }
+        },
+      );
+    });
   }
 }

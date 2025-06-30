@@ -1,5 +1,5 @@
 import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateCourseDto, PrimaryLanguage } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { HydratedDocument, Model, Types } from 'mongoose';
@@ -26,91 +26,98 @@ export class CourseService {
     // Validates instructor, creates course, links course to instructor
     public async AddNewCourse(createCourseDto: CreateCourseDto,instructorId: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
       lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
+            
       const user = await this.userService.getCurrentUserDocument(instructorId, lang);
       if (!user) {
         const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
         throw new NotFoundException(message);
       }
 
-      const category = await this.categoryModel.findOne({
-        $or: [
-          { 'title.en': createCourseDto.category },
-          { 'title.ar': createCourseDto.category },
-        ],
-      });
 
-      if (!category) {
-        const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
-        throw new NotFoundException(message);
+      let categoryId: Types.ObjectId | null = null;
+      if (Types.ObjectId.isValid(createCourseDto.category)) {
+        categoryId = new Types.ObjectId(createCourseDto.category);
+      } else {
+        const category = await this.categoryModel.findOne({
+          $or: [
+            { 'title.en': createCourseDto.category },
+            { 'title.ar': createCourseDto.category },
+          ],
+        });
+        if (!category) {
+          const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
+          throw new NotFoundException(message);
+        }
+        categoryId = category._id as Types.ObjectId;
       }
 
-      const level = await this.levelModel.findOne({
-        $or: [
-          { 'title.en': createCourseDto.level },
-          { 'title.ar': createCourseDto.level },
-        ],
-      });
-
-      if (!level) {
-        const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
-        throw new NotFoundException(message);
+    
+      let levelId: Types.ObjectId | null = null;
+      if (Types.ObjectId.isValid(createCourseDto.level)) {
+        levelId = new Types.ObjectId(createCourseDto.level);
+      } else {
+        const level = await this.levelModel.findOne({
+          $or: [
+            { 'title.en': createCourseDto.level },
+            { 'title.ar': createCourseDto.level },
+          ],
+        });
+        if (!level) {
+          const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
+          throw new NotFoundException(message);
+        }
+        levelId = level._id as Types.ObjectId;
       }
+
+      const toLowerObject = (obj: { en: string; ar: string }) => ({
+        en: obj.en.toLowerCase(),
+        ar: obj.ar.toLowerCase(),
+      });
 
       try {
-        const lectureIds = [];
+        const lectureIds: Types.ObjectId[] = [];
 
         if (createCourseDto.lectures && createCourseDto.lectures.length > 0) {
           for (const lectureDto of createCourseDto.lectures) {
             const lecture = await this.lectureModel.create({
               ...lectureDto,
-              title: {
-                en: lectureDto.title.en.toLowerCase(),
-                ar: lectureDto.title.ar.toLowerCase(),
-              },
+              title: toLowerObject(lectureDto.title),
             });
             lectureIds.push(lecture._id);
           }
         }
 
         const newCourse = await this.courseModel.create({
-          ...createCourseDto,
-          instructorName: user.userName,
           instructorId,
-          category: category._id,
-          level: level._id,
-          title: {
-            en: createCourseDto.title.en.toLowerCase(),
-            ar: createCourseDto.title.ar.toLowerCase(),
-          },
-          description: {
-            en: createCourseDto.description.en.toLowerCase(),
-            ar: createCourseDto.description.ar.toLowerCase(),
-          },
-          welcomeMessage: {
-            en: createCourseDto.welcomeMessage.en.toLowerCase(),
-            ar: createCourseDto.welcomeMessage.ar.toLowerCase(),
-          },
-          subtitle: {
-            en: createCourseDto.subtitle.en.toLowerCase(),
-            ar: createCourseDto.subtitle.ar.toLowerCase(),
-          },
-          objectives: {
-            en: createCourseDto.objectives.en.toLowerCase(),
-            ar: createCourseDto.objectives.ar.toLowerCase(),
-          },
+          instructorName: user.userName,
+          title: toLowerObject(createCourseDto.title),
+          description: toLowerObject(createCourseDto.description),
+          welcomeMessage: toLowerObject(createCourseDto.welcomeMessage),
+          subtitle: toLowerObject(createCourseDto.subtitle),
+          objectives: toLowerObject(createCourseDto.objectives),
+          category: categoryId,
+          level: levelId,
           curriculum: lectureIds,
+          image: createCourseDto.image || '', 
+          pricing: createCourseDto.pricing,
+          isPublished: createCourseDto.isPublished ?? false,
+          primaryLanguage: createCourseDto.primaryLanguage,
         });
 
         user.enrolledCourses.push(newCourse._id);
         await user.save();
+        
+        const populatedCourse = await this.courseModel.findById(newCourse._id)
+          .populate('category', 'title')
+          .populate('level', 'title')
+          .populate('curriculum');
 
-        return newCourse;
+        return populatedCourse;
       } catch (error) {
-        const message =
-          lang === 'ar'
-            ? 'حدث خطأ أثناء إنشاء الدورة'
-            : 'An error occurred while creating the course';
+        console.error(error);
+        const message = lang === 'ar'
+          ? 'حدث خطأ أثناء إنشاء الدورة'
+          : 'An error occurred while creating the course';
         throw new InternalServerErrorException(message);
       }
     }

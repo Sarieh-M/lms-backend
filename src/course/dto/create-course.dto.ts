@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ObjectId, Types } from 'mongoose';
 import { LectureDTO } from './lecture-course.dto';
+  import { Transform } from 'class-transformer';
 
 // Enum for defining primary language options
 export enum PrimaryLanguage {
@@ -55,6 +56,16 @@ export class CreateCourseDto {
   // Primary language of the course: EN or AR
   @IsEnum(PrimaryLanguage, {
     message: (args) => args.object['lang'] === 'ar' ? 'اللغة الأساسية غير صحيحة' : 'Invalid primary language',
+  })
+  @Transform(({ value }) => {
+    if (!value) return PrimaryLanguage.EN;
+
+    const val = value.toString().toLowerCase();
+
+    if (val === 'en' || val === 'english') return PrimaryLanguage.EN;
+    if (val === 'ar' || val === 'arabic') return PrimaryLanguage.AR;
+
+    return value;
   })
   @ApiProperty()
   primaryLanguage: PrimaryLanguage;
