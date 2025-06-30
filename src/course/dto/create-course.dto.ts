@@ -114,8 +114,13 @@ export class CreateCourseDto {
   objectives: LocalizedTextDto;
 
   // Whether the course is published or not
-  @IsBoolean({ message: (args) => args.object['lang'] === 'ar' ? 'حالة النشر مطلوبة' : 'Published status is required' })
-  @ApiProperty()
+    @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return value;
+  })
+  @IsBoolean({ message: 'Published status is required' })
   isPublished: boolean;
 
   @IsOptional()

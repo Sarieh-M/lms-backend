@@ -1,6 +1,7 @@
 import {IsBoolean,IsNotEmpty,IsObject,IsUrl,ValidateNested,} from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
 
 // Localized title DTO used inside lecture objects
 export class LocalizedTitle {
@@ -47,15 +48,12 @@ export class LectureDTO {
   videoUrl: string;
 
   // Whether the lecture is available as a free preview
-   @IsBoolean({
-    message: (args) =>
-      args.object['lang'] === 'ar'
-        ? 'المعاينة المجانية يجب أن تكون قيمة منطقية'
-        : 'Free preview must be a boolean value',
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return value;
   })
-  @ApiProperty({
-    description: 'Indicates if the lecture is available for free preview',
-    example: true,
-  })
+  @IsBoolean({ message: 'Free preview must be a boolean value' })
   freePreview: boolean;
 }

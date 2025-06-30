@@ -32,7 +32,7 @@ export class CourseService {
         const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
         throw new NotFoundException(message);
       }
-
+    
 
       let categoryId: Types.ObjectId | null = null;
       if (Types.ObjectId.isValid(createCourseDto.category)) {
