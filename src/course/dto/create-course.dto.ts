@@ -101,6 +101,10 @@ export class CreateCourseDto {
   welcomeMessage: LocalizedTextDto;
 
   // Course pricing (must be positive number)
+  @Transform(({ value }) => {
+    const val = typeof value === 'string' ? parseFloat(value) : value;
+    return isNaN(val) ? value : val;
+  })
   @IsNumber({}, { message: (args) => args.object['lang'] === 'ar' ? 'السعر مطلوب' : 'Pricing is required' })
   @IsPositive({ message: (args) => args.object['lang'] === 'ar' ? 'يجب أن يكون السعر رقماً موجباً' : 'Pricing must be a positive number' })
   @ApiProperty()
