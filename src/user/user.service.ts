@@ -352,5 +352,46 @@ export class UserService {
         totalRevenue,
       };
     }
+
+    public async getUserGrowthForLastNMonths(
+      months = 6,
+      lang: 'en' | 'ar' = 'en',
+    ): Promise<{ month: string; count: number }[]> {
+      const toDate = new Date();
+      // Start from the first day of the month `months - 1` ago to include the current month.
+      const fromDate = new Date(toDate.getFullYear(), toDate.getMonth() - (months - 1), 1);
+
+      const monthlyData = await this.userModel.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: fromDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+            },
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const dataMap = new Map<string, number>();
+      monthlyData.forEach(item => {
+        dataMap.set(`${item._id.year}-${item._id.month}`, item.count);
+      });
+
+      const result: { month: string; count: number }[] = [];
+      for (let i = months - 1; i >= 0; i--) {
+        const date = new Date(toDate.getFullYear(), toDate.getMonth() - i, 1);
+        const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
+        const monthName = date.toLocaleString(locale, { month: 'long' });
+        const count = dataMap.get(`${date.getFullYear()}-${date.getMonth() + 1}`) || 0;
+        result.push({ month: monthName, count });
+      }
+      return result;
+    }
     
   }
