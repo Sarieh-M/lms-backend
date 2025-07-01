@@ -12,6 +12,7 @@ import { Course, CourseSchema } from 'src/course/schemas/course.schema';
 import { Order, OrderSchema } from 'src/order/schema/order.schema';
 import { StudentCourseModule } from 'src/student-course/student-course.module';
 import { LectureProgres, LectureProgresSchema } from 'src/course-progress/schemas/lecture-progress.schema';
+
 import { CourseProgress, CourseProgressSchema } from 'src/course-progress/schemas/course-progress.schema';
 
 @Module({
