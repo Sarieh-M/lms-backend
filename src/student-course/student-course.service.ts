@@ -204,4 +204,44 @@ public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
     }
     return student;
   }
+
+
+public async enrollStudentInCourse(userId: Types.ObjectId, courseId: Types.ObjectId) {
+  // نحصل على الـ student document الفعلي
+  let student = await this.studentModel.findOne({ userId });
+
+  if (!student) {
+    student = new this.studentModel({
+      userId,
+      courses: [{
+        idCourses: [courseId],
+        dateOfPurchase: new Date(),
+        ViewAt: null,
+      }]
+    });
+  } else {
+    const alreadyEnrolled = student.courses.some(entry =>
+      entry.idCourses.includes(courseId)
+    );
+
+    if (!alreadyEnrolled) {
+      student.courses.push({
+        idCourses: [courseId],
+        dateOfPurchase: new Date(),
+        ViewAt: null,
+      });
+    }
+  }
+
+  await student.save();
+
+  // تحديث قائمة الطلاب داخل الكورس
+  const studentId = student._id;
+
+  await this.courseModel.findByIdAndUpdate(courseId, {
+    $addToSet: { students: studentId }
+  });
+
+  return student;
+}
 }

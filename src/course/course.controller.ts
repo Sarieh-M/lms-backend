@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, BadRequestException, Query, Req, Headers } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -9,6 +9,7 @@ import { JWTPayloadType } from 'utilitis/types';
 import { Types } from 'mongoose';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/user/guard/auth.guard';
+import { User } from 'src/user/schemas/user.schema';
 
 @ApiTags('Courses')
 @Controller('api/course')
@@ -77,50 +78,62 @@ export class CourseController {
   }
   // GET ALL COURSES [PUBLIC]
   @Get()
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Retrieve all courses with optional filters' })
   @ApiResponse({ status: 200, description: 'Courses fetched successfully' })
   public getAllCourses(
-    @Query('category') category?: string,
-    @Query('level') level?: string,
-    @Query('primaryLanguage') primaryLanguage?: string,
-    @Query('sortBy') sortBy?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('useFilter') useFilter = false,
-    @Req() req?: any,
-  ) {
-    const lang = req.lang || 'en';
-    const user = req.user;
-    return this.courseService.getAllCourses(
-      category,
-      level,
-      primaryLanguage,
-      sortBy,
-      page,
-      limit,
-      useFilter,
-      lang,
-      user,
-    );
-  }
+  @Req() req: any,
+  @Query('category') category?: string,
+  @Query('level') level?: string,
+  @Query('primaryLanguage') primaryLanguage?: string,
+  @Query('sortBy') sortBy?: string,
+  @Query('page') page = 1,
+  @Query('limit') limit = 10,
+  @Query('useFilter') useFilter = false,
+  @Headers('lang') lang: 'en' | 'ar' = 'en',  // ← اللغة من الهيدر مباشرة
+) {
+  return this.courseService.getAllCourses(
+    category,
+    level,
+    primaryLanguage,
+    sortBy,
+    page,
+    limit,
+    useFilter,
+    lang,
+    req.user,  // ← يحتوي على user.role و user.id
+  );
+}
+@Get('all-no-filter')
+@ApiOperation({ summary: 'Retrieve all courses without role restrictions' })
+@ApiResponse({ status: 200, description: 'Courses fetched successfully' })
+public getAllCoursesNoFilter(
+  @Query('sortBy') sortBy?: string,
+  @Query('page') page = 1,
+  @Query('limit') limit = 10,
+  @Headers('lang') lang: 'en' | 'ar' = 'en',  // اللغة من الهيدر مباشرة
+) {
+  return this.courseService.getAllCoursesNoFilter(sortBy, +page, +limit, lang);
+}
   // GET COURSE BY ID [PUBLIC]
   @Get('getCourseById/:id')
-  @ApiOperation({ summary: 'Get course details by ID' })
-  @ApiParam({ name: 'id', description: 'Course ID' })
-  @ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Course not found' })
-  public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
-    const lang = req.lang || 'en';
+  @UseGuards(AuthGuard)
+@ApiOperation({ summary: 'Get course details by ID' })
+@ApiParam({ name: 'id', description: 'Course ID' })
+@ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
+@ApiResponse({ status: 404, description: 'Course not found' })
+public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
+  const lang = req.lang || 'en';
 
-    if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException({
-        message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
-        errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
-      });
-    }
-
-    return this.courseService.getCourseDetailsByID(new Types.ObjectId(id), lang);
+  if (!Types.ObjectId.isValid(id)) {
+    throw new BadRequestException({
+      message: lang === 'ar' ? 'يوجد أخطاء' : 'There are errors',
+      errors: lang === 'ar' ? 'معرف الدورة غير صالح' : 'Invalid course ID format',
+    });
   }
+
+  return this.courseService.getCourseDetailsByID(new Types.ObjectId(id), lang, req.user);
+}
   // DELETE COURSE[Admin & Teacher]
   @Delete('delete/:id')
   @ApiBearerAuth('JWT')

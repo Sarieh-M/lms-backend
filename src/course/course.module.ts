@@ -17,6 +17,8 @@ import { Level, LevelSchema } from './schemas/level.schema';
   controllers: [CourseController],
   providers: [CourseService],
   imports: [
+    MongooseModule.forRoot("mongodb+srv://amer_158819:amer_158819@cluster0.cgvlr7r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",{
+        }), 
     MongooseModule.forFeature([
       { 
         name: Course.name, 

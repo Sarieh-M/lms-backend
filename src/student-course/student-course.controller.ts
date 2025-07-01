@@ -1,9 +1,9 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { StudentCourseService } from './student-course.service';
 import { Types } from 'mongoose';
 import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 import { JWTPayloadType } from 'utilitis/types';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/user/decorator/user-role.decorator';
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { AuthGuard } from 'src/user/guard/auth.guard';
@@ -77,4 +77,28 @@ export class StudentCourseController {
     const lang = req.lang||'en';
     return this.studentCourseService.getAllCoursesForCurrentStudent(new Types.ObjectId(studentId),user,lang);
   }
+
+  @UseGuards(AuthGuard, AuthRolesGuard)
+@Roles('admin', 'teacher')
+@Post('enroll-student')
+@ApiOperation({ summary: 'Enroll student in course (admin/teacher only)' })
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      userId: { type: 'string', example: '685280430029d74473dff9ca' },
+      courseId: { type: 'string', example: '6852953e0029d74473dffa29' },
+    },
+    required: ['userId', 'courseId'],
+  },
+})
+public enrollStudentInCourse(
+  @Body('userId') userId: string,
+  @Body('courseId') courseId: string,
+) {
+  return this.studentCourseService.enrollStudentInCourse(
+    new Types.ObjectId(userId),
+    new Types.ObjectId(courseId),
+  );
+}
 }
