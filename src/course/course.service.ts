@@ -11,6 +11,7 @@ import { UserRole } from 'utilitis/enums';
 import { Student } from 'src/student-course/schemas/student-course.schema';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { Level } from './schemas/level.schema';
+import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 
 @Injectable()
 export class CourseService {
@@ -123,150 +124,58 @@ export class CourseService {
 }
     //============================================================================
     // Get all courses with filters, sorting, pagination, and role-based access 
-    public async getAllCourses(
-      category?: string,
-      level?: string,
-      primaryLanguage?: string,
-      sortBy: string = 'price-lowtohigh',
-      page: number = 1,
-      limit: number = 10,
-      useFilter: boolean = false,
-      lang: 'en' | 'ar' = 'en',
-      user?: any
-    ): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-
-      const currentUser = await this.userService.getCurrentUserDocument(user.id);
-      const role = currentUser?.role || 'guest';
-      const isStudent = role === 'student';
-
-      const baseFilters: any = {};
-      if (level) baseFilters[`level.title.${lang}`] = { $regex: level, $options: 'i' };
-      if (primaryLanguage) baseFilters.primaryLanguage = { $regex: primaryLanguage, $options: 'i' };
-      if (category) baseFilters[`category.title.${lang}`] = { $regex: category, $options: 'i' };
-
-
-      let roleFilter: any = {};
-      switch (role) {
-        case 'admin':
-
-          break;
-
-        case 'teacher':
-          roleFilter = { instructorId: currentUser._id };
-          break;
-
-        case 'student':
-          const student = await this.studentModel.findOne({ userId: currentUser._id });
-
-          if (student && student.courses?.length) {
-            const enrolledCourseIds = student.courses.flatMap(c => c.idCourses || []);
-            roleFilter = { _id: { $in: enrolledCourseIds } };
-          } else {
-            roleFilter = { _id: { $in: [] } };
-          }
-          break;
-
-        default:
-          
-          roleFilter = { _id: { $in: [] } };
-      }
-
-      const finalFilter = {
-        ...(useFilter ? baseFilters : {}),
-        ...roleFilter,
-      };
-
-    
-      let sortParam = {};
-      switch (sortBy) {
-        case 'price-lowtohigh':
-          sortParam = { pricing: 1 };
-          break;
-        case 'price-hightolow':
-          sortParam = { pricing: -1 };
-          break;
-        case 'title-atoz':
-          sortParam = { [`title.${lang}`]: 1 };
-          break;
-        case 'title-ztoa':
-          sortParam = { [`title.${lang}`]: -1 };
-          break;
-        default:
-          sortParam = { pricing: 1 };
-      }
-
-      const skip = (page - 1) * limit;
-      const totalCourses = await this.courseModel.countDocuments(finalFilter);
-
-      const courses = await this.courseModel
-        .find(finalFilter)
-        .populate('category', 'title')
-        .populate('level', 'title')
-        .sort(sortParam)
-        .skip(skip)
-        .limit(limit)
-        .exec();
-
-      const localizedCourses = courses.map(course => {
-        const obj = course.toObject();
-
-        const categoryTitle =
-          obj.category && typeof obj.category !== 'string' && 'title' in obj.category
-            ? obj.category.title
-            : {};
-
-        const levelTitle =
-          obj.level && typeof obj.level !== 'string' && 'title' in obj.level
-            ? obj.level.title
-            : {};
-
-        if (isStudent) {
-          return {
-            ...obj,
-            title: obj.title?.[lang] ?? '',
-            description: obj.description?.[lang] ?? '',
-            subtitle: obj.subtitle?.[lang] ?? '',
-            welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
-            level: levelTitle?.[lang] ?? '',
-            category: categoryTitle?.[lang] ?? '',
-            objectives: obj.objectives?.[lang] ?? '',
-          };
-        } else {
-          return {
-            ...obj,
-            title: obj.title ?? {},
-            description: obj.description ?? {},
-            subtitle: obj.subtitle ?? {},
-            welcomeMessage: obj.welcomeMessage ?? {},
-            level: levelTitle ?? {},
-            category: categoryTitle ?? {},
-          };
-        }
-      });
-
-      return {
-        totalCourses,
-        totalPages: Math.ceil(totalCourses / limit),
-        currentPage: page,
-        courses: localizedCourses,
-      };
-    }
-    //============================================================================
-    // Get all courses  sorting, pagination, and role-based access 
-    public async getAllCoursesNoFilter(
+     public async getAllCourses(
+  category?: string,
+  level?: string,
+  primaryLanguage?: string,
   sortBy: string = 'price-lowtohigh',
   page: number = 1,
   limit: number = 10,
+  useFilter: boolean = false,
   lang: 'en' | 'ar' = 'en',
+  user?: any
 ): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-  // لا يوجد فلتر - نجيب كل الكورسات
-  const finalFilter = {};
+  const currentUser = await this.userService.getCurrentUserDocument(user.id);
+  const role = currentUser?.role || 'guest';
+  const isStudent = role === 'student';
 
-  let sortParam = {};
+  const baseFilters: any = {};
+  if (level) baseFilters[`level.title.${lang}`] = { $regex: level, $options: 'i' };
+  if (primaryLanguage) baseFilters.primaryLanguage = { $regex: primaryLanguage, $options: 'i' };
+  if (category) baseFilters[`category.title.${lang}`] = { $regex: category, $options: 'i' };
+
+  let roleFilter: any = {};
+  switch (role) {
+    case 'admin':
+      break;
+
+    case 'teacher':
+      roleFilter = { instructorId: currentUser._id };
+      break;
+
+    case 'student':
+      const student = await this.studentModel.findOne({ userId: currentUser._id });
+
+      if (student && student.courses?.length) {
+        const enrolledCourseIds = student.courses.flatMap(c => c.idCourses || []);
+        roleFilter = { _id: { $in: enrolledCourseIds } };
+      } else {
+        roleFilter = { _id: { $in: [] } };
+      }
+      break;
+
+    default:
+      roleFilter = { _id: { $in: [] } };
+  }
+
+  const finalFilter = {
+    ...(useFilter ? baseFilters : {}),
+    ...roleFilter,
+  };
+
+  let sortParam: any = {};
   switch (sortBy) {
     case 'price-lowtohigh':
       sortParam = { pricing: 1 };
@@ -291,6 +200,14 @@ export class CourseService {
     .find(finalFilter)
     .populate('category', 'title')
     .populate('level', 'title')
+    .populate({
+      path: 'students',
+      populate: {
+        path: 'userId',
+        model: 'User',
+        select: '_id userName userEmail gender',
+      },
+    })
     .sort(sortParam)
     .skip(skip)
     .limit(limit)
@@ -309,6 +226,127 @@ export class CourseService {
         ? obj.level.title
         : {};
 
+    const formattedStudents = (obj.students || []).map((student: any) => {
+      const user = student.userId;
+      if (!user) return null;
+
+      return {
+        _id: user._id,
+        userName: user.userName,
+        userEmail: user.userEmail,
+        gender: user.gender,
+      };
+    }).filter(Boolean);
+
+    if (isStudent) {
+      return {
+        ...obj,
+        title: obj.title?.[lang] ?? '',
+        description: obj.description?.[lang] ?? '',
+        subtitle: obj.subtitle?.[lang] ?? '',
+        welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
+        objectives: obj.objectives?.[lang] ?? '',
+        level: levelTitle?.[lang] ?? '',
+        category: categoryTitle?.[lang] ?? '',
+        students: formattedStudents,
+      };
+    } else {
+      return {
+        ...obj,
+        title: obj.title ?? {},
+        description: obj.description ?? {},
+        subtitle: obj.subtitle ?? {},
+        welcomeMessage: obj.welcomeMessage ?? {},
+        objectives: obj.objectives ?? {},
+        level: levelTitle ?? {},
+        category: categoryTitle ?? {},
+        students: formattedStudents,
+      };
+    }
+  });
+
+  return {
+    totalCourses,
+    totalPages: Math.ceil(totalCourses / limit),
+    currentPage: page,
+    courses: localizedCourses,
+  };
+}
+    //============================================================================
+    // Get all courses  sorting, pagination, and role-based access 
+    public async getAllCoursesNoFilter(
+  sortBy: string = 'price-lowtohigh',
+  page: number = 1,
+  limit: number = 10,
+  lang: 'en' | 'ar' = 'en',
+): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+  const finalFilter = {};
+
+  let sortParam: any = {};
+  switch (sortBy) {
+    case 'price-lowtohigh':
+      sortParam = { pricing: 1 };
+      break;
+    case 'price-hightolow':
+      sortParam = { pricing: -1 };
+      break;
+    case 'title-atoz':
+      sortParam = { [`title.${lang}`]: 1 };
+      break;
+    case 'title-ztoa':
+      sortParam = { [`title.${lang}`]: -1 };
+      break;
+    default:
+      sortParam = { pricing: 1 };
+  }
+
+  const skip = (page - 1) * limit;
+  const totalCourses = await this.courseModel.countDocuments(finalFilter);
+
+  const courses = await this.courseModel
+    .find(finalFilter)
+    .populate('category', 'title')
+    .populate('level', 'title')
+    .populate({
+      path: 'students',
+      populate: {
+        path: 'userId',
+        model: 'User',
+        select: '_id userName userEmail gender',
+      },
+    })
+    .sort(sortParam)
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  const localizedCourses = courses.map(course => {
+    const obj = course.toObject();
+
+    const categoryTitle =
+      obj.category && typeof obj.category !== 'string' && 'title' in obj.category
+        ? obj.category.title
+        : {};
+
+    const levelTitle =
+      obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+        ? obj.level.title
+        : {};
+
+    const formattedStudents = (obj.students || []).map((student: any) => {
+      const user = student.userId;
+      if (!user) return null;
+
+      return {
+        _id: user._id,
+        userName: user.userName,
+        userEmail: user.userEmail,
+        gender: user.gender,
+      };
+    }).filter(Boolean);
+
     return {
       ...obj,
       title: obj.title?.[lang] ?? '',
@@ -318,6 +356,7 @@ export class CourseService {
       level: levelTitle?.[lang] ?? '',
       category: categoryTitle?.[lang] ?? '',
       objectives: obj.objectives?.[lang] ?? '',
+      students: formattedStudents,
     };
   });
 
@@ -333,16 +372,23 @@ export class CourseService {
     public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en', user?: any) {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-  // جلب بيانات المستخدم مع الدور
   const currentUser = await this.userService.getCurrentUserDocument(user.id);
   const role = currentUser?.role || 'guest';
   const isStudent = role === 'student';
-      console.log(currentUser)
+
   const courseDetails = await this.courseModel
     .findById(id)
     .populate('curriculum')
     .populate('category')
-    .populate('level') as any;
+    .populate('level')
+    .populate({
+      path: 'students',
+      populate: {
+        path: 'userId',
+        model: 'User',
+        select: '_id userName userEmail gender',
+      },
+    }) as any;
 
   if (!courseDetails) {
     const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
@@ -356,6 +402,19 @@ export class CourseService {
   const getLocalizedArray = (arr: any[]) => {
     return Array.isArray(arr) ? arr.map(obj => obj?.[lang] ?? '') : [];
   };
+
+  // معالجة بيانات الطلاب
+  const formattedStudents = (courseDetails.students || []).map((student: any) => {
+    const user = student.userId;
+    if (!user) return null;
+
+    return {
+      _id: user._id,
+      userName: user.userName,
+      userEmail: user.userEmail,
+      gender: user.gender,
+    };
+  }).filter(Boolean);
 
   // إذا كان الطالب، نعرض المعلومات بلغته فقط
   if (isStudent) {
@@ -374,7 +433,7 @@ export class CourseService {
       objectives: getLocalizedArray(courseDetails.objectives),
       pricing: courseDetails.pricing,
       curriculum: courseDetails.curriculum,
-      students: courseDetails.students,
+      students: formattedStudents,
       isPublished: courseDetails.isPublished,
     };
   }
@@ -395,7 +454,7 @@ export class CourseService {
     objectives: courseDetails.objectives ?? [],
     pricing: courseDetails.pricing,
     curriculum: courseDetails.curriculum,
-    students: courseDetails.students,
+    students: formattedStudents,
     isPublished: courseDetails.isPublished,
   };
 }
