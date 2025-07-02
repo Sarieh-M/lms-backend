@@ -804,7 +804,7 @@ export class CourseService {
   > {
     const stats = await this.courseModel.aggregate([
       {
-        $group: {
+        $group: { 
           _id: '$isPublished',
           count: { $sum: 1 },
         },
