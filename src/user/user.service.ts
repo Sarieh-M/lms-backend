@@ -7,7 +7,7 @@ import { Model, Types } from 'mongoose';
 import { AuthProvider } from './auth/auth.provider';
 import { LoginDto } from './dto/login.dto';
 import { JWTPayloadType } from 'utilitis/types';
-import { UserRole } from 'utilitis/enums';
+import { UserRole } from '../../utilitis/enums';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { StudentCourseService } from 'src/student-course/student-course.service';
 import { Request, Response } from 'express';

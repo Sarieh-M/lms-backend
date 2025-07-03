@@ -326,7 +326,9 @@ export class AuthProvider {
         ? 'تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'
         : 'Reset code has been sent to your email';
 
-    return { message: successMsg };
+    return { message: successMsg ,
+      UserName:userFromDB.userName,
+    };
   }
   //============================================================================
   //This one for reset password and create new one

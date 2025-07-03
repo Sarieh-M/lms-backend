@@ -1,17 +1,15 @@
 import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { CreateCourseDto, PrimaryLanguage } from './dto/create-course.dto';
+import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { HydratedDocument, Model, SortOrder, Types } from 'mongoose';
+import { HydratedDocument, Model, Types } from 'mongoose';
 import { Course } from './schemas/course.schema';
 import { UserService } from 'src/user/user.service';
 import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
-import { UserRole } from 'utilitis/enums';
 import { Student } from 'src/student-course/schemas/student-course.schema';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { Level } from './schemas/level.schema';
-import { CurrentUser } from 'src/user/decorator/current-user.decorator';
 
 @Injectable()
 export class CourseService {
