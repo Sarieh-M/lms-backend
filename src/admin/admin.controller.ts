@@ -1,5 +1,5 @@
 import { Controller, Get,  Query, ValidationPipe, UsePipes, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
-import { UsersService } from './admin.service.ts';
+import { UsersService } from './admin.service';
 
 
 @Controller('admin/') 
