@@ -6,8 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
 import { Course, CourseDocument } from 'src/course/schemas/course.schema';
-
-import * as bcrypt from 'bcrypt'; // لتشفير كلمة المرور
+import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from 'src/user/schemas/user.schema';
 import { Order, OrderDocument } from 'src/order/schema/order.schema';
 import { UserRole } from 'utilitis/enums';
@@ -15,29 +14,40 @@ import { subMonths, format } from 'date-fns';
 
 @Injectable()
 export class AdminService {
+  // Add language translations like in UserService
+  // private roleTranslations = {
+  //   ADMIN: { en: 'Admin', ar: 'مدير' },
+  //   INSTRUCTOR: { en: 'Instructor', ar: 'مدرس' },
+  //   STUDENT: { en: 'Student', ar: 'طالب' },
+  //   TEACHER: { en: 'Teacher', ar: 'مدرس' }, // Added TEACHER since you use it
+  // };
+  private roleTranslations = {
+    [UserRole.ADMIN]: { en: 'Admin', ar: 'مدير' },
+    [UserRole.TEACHER]: { en: 'Teacher', ar: 'مدرس' },
+    [UserRole.STUDENT]: { en: 'Student', ar: 'طالب' },
+  };
+  
+
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Course.name) private courseModel: Model<CourseDocument>, // لإحصائيات الدورات
+    @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-    // @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-    // لإحصائيات الطلبات
   ) {}
 
-  //============================================================================
-  /**
-   * @description تجلب قائمة المستخدمين مع Pagination، وتصفية (اختياري)، وترجع بيانات محددة للمستخدمين.
-   * @param page رقم الصفحة المطلوب.
-   * @param limit عدد العناصر في الصفحة الواحدة.
-   * @param search نص للبحث في اسم المستخدم أو البريد الإلكتروني.
-   * @returns كائن يحتوي على قائمة المستخدمين، العدد الإجمالي، رقم الصفحة، عدد العناصر في الصفحة، وإجمالي الصفحات.
-   */
-  async findAllUsersForDashboard(page: number, limit: number, search?: string) {
+  // Modified to include language support
+  async findAllUsersForDashboard(
+    page: number,
+    limit: number,
+    lang: 'en' | 'ar' = 'en',
+    search?: string,
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const skip = (page - 1) * limit;
     const query: any = {};
+
     if (search) {
-      // البحث في userName أو userEmail (يمكنك إضافة حقول أخرى للبحث)
       query.$or = [
-        { userName: { $regex: search, $options: 'i' } }, // 'i' لجعل البحث غير حساس لحالة الأحرف
+        { userName: { $regex: search, $options: 'i' } },
         { userEmail: { $regex: search, $options: 'i' } },
       ];
     }
@@ -45,23 +55,27 @@ export class AdminService {
     const [users, total] = await Promise.all([
       this.userModel
         .find(query)
-        .select('userName userEmail role createdAt isAccountverified') // اختر الحقول المطلوبة فقط
+        .select('userName userEmail role createdAt isAccountverified')
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 }) // ترتيب تنازلي حسب تاريخ الإنشاء (الأحدث أولاً)
+        .sort({ createdAt: -1 })
+        .lean()
         .exec(),
       this.userModel.countDocuments(query),
     ]);
 
+    // Apply language translations
+    const usersWithLang = users.map((user) => ({
+      id: user._id,
+      userName: user.userName,
+      userEmail: user.userEmail,
+      role: this.roleTranslations[user.role]?.[lang] || user.role,
+      isAccountverified: user.isAccountverified,
+      // createdAt: user.createdAt,
+    }));
+
     return {
-      users: users.map((user) => ({
-        id: user._id, // إضافة ID للمستخدم
-        userName: user.userName,
-        userEmail: user.userEmail,
-        role: user.role,
-        // joinDate: user.createdAt, // createdAt هو تاريخ الانضمام (من timestamps)
-        isAccountverified: user.isAccountverified, // حالة التحقق من الحساب
-      })),
+      users: usersWithLang,
       total,
       page,
       limit,
@@ -69,30 +83,25 @@ export class AdminService {
     };
   }
 
-  //============================================================================
-  /**
-   * @description تجلب إحصائيات عامة للوحة التحكم: إجمالي المستخدمين، الدورات، والطلبات.
-   * @returns كائن يحتوي على عدد المستخدمين، الدورات، والطلبات.
-   */
-  async getDashboardSummary(): Promise<{
-    totalUsers: number;
-    totalCourses: number;
-    totalOrders: number;
-  }> {
+  // Modified to include language support
+  async getDashboardSummary(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const [totalUsers, totalCourses, totalOrders] = await Promise.all([
       this.userModel.countDocuments({}),
       this.courseModel.countDocuments({}),
       this.orderModel.countDocuments({}),
     ]);
-    return { totalUsers, totalCourses, totalOrders };
+
+    return {
+      totalUsers,
+      totalCourses,
+      totalOrders,
+    };
   }
 
-  //============================================================================
-  /**
-   * @description تجلب عدد المستخدمين لكل دور (طالب، معلم، مشرف).
-   * @returns كائن يمثل عدد المستخدمين لكل دور.
-   */
-  async getUsersCountByRole(): Promise<Record<UserRole, number>> {
+  async getUsersCountByRole(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+    
     const userCounts = await this.userModel.aggregate([
       {
         $group: {
@@ -101,40 +110,55 @@ export class AdminService {
         },
       },
     ]);
-
-    const result: Record<UserRole, number> = {
+  
+    // Initialize with all possible roles
+    const result = {
       [UserRole.STUDENT]: 0,
       [UserRole.TEACHER]: 0,
       [UserRole.ADMIN]: 0,
     };
-
+  
     userCounts.forEach((item) => {
       if (Object.values(UserRole).includes(item._id as UserRole)) {
         result[item._id as UserRole] = item.count;
       }
     });
-
-    return result;
+  
+    // Safely build translated result with fallbacks
+    const translatedResult = {};
+    
+    Object.entries(result).forEach(([role, count]) => {
+      const roleKey = role as UserRole;
+      const translation = this.roleTranslations[roleKey]?.[lang] || roleKey;
+      translatedResult[translation] = count;
+    });
+  
+    return translatedResult;
   }
 
-  //============================================================================
-  /**
-   * @description تجلب أحدث عدد محدد من المستخدمين (مثلاً: آخر 5 مستخدمين مسجلين).
-   * @param limit الحد الأقصى لعدد المستخدمين المراد جلبهم (افتراضي 5).
-   * @returns قائمة بأحدث المستخدمين المسجلين، مع حقول محددة.
-   */
-  async getLatestUsers(limit: number = 5) {
+  // Modified to include language support
+  async getLatestUsers(limit: number = 5, lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const latestUsers = await this.userModel
       .find({})
       .select('userName userEmail role createdAt')
-      .sort({ createdAt: -1 }) // الأحدث أولاً
+      .sort({ createdAt: -1 })
       .limit(limit)
+      .lean()
       .exec();
 
-    return latestUsers;
+    // Apply language translations
+    const usersWithLang = latestUsers.map((user) => ({
+      ...user,
+      role: this.roleTranslations[user.role]?.[lang] || user.role,
+    }));
+
+    return usersWithLang;
   }
-  // NEW: Get student and teacher counts
-  async getStudentTeacherCounts() {
+
+  // Modified to include language support
+  async getStudentTeacherCounts(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const [students, teachers] = await Promise.all([
       this.userModel.countDocuments({ role: UserRole.STUDENT }),
       this.userModel.countDocuments({ role: UserRole.TEACHER }),
@@ -143,8 +167,9 @@ export class AdminService {
     return { students, teachers };
   }
 
-  // NEW: Get additional analytics (optional)
-  async getAdditionalAnalytics() {
+  // Modified to include language support
+  async getAdditionalAnalytics(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const [totalRevenue, completedCourses] = await Promise.all([
       this.orderModel.aggregate([
         { $match: { paymentStatus: 'paid' } },
@@ -159,28 +184,32 @@ export class AdminService {
     };
   }
 
+  // Modified to include language support
   async getAllCoursesWithDetails(
     page: number = 1,
     limit: number = 10,
+    lang: 'en' | 'ar' = 'en',
     search?: string,
     categoryId?: string,
     instructorId?: string,
     isPublished?: boolean,
   ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const skip = (page - 1) * limit;
     const query: any = {};
 
-    // Build the query
     if (search) {
       query['title.en'] = { $regex: search, $options: 'i' };
     }
     if (categoryId) {
-      // Ensure categoryId is a valid ObjectId if provided
       if (mongoose.Types.ObjectId.isValid(categoryId)) {
         query.category = new mongoose.Types.ObjectId(categoryId);
       } else {
-        // Handle invalid categoryId (either ignore or throw error)
-        throw new BadRequestException('Invalid category ID format');
+        throw new BadRequestException(
+          lang === 'ar' 
+            ? 'معرف الفئة غير صالح' 
+            : 'Invalid category ID format'
+        );
       }
     }
     if (instructorId) {
@@ -190,7 +219,6 @@ export class AdminService {
       query.isPublished = isPublished;
     }
 
-    // First get courses without population to filter invalid categories
     const courses = await this.courseModel
       .find(query)
       .skip(skip)
@@ -199,12 +227,10 @@ export class AdminService {
       .lean()
       .exec();
 
-    // Then manually populate valid categories
     const validCourses = await Promise.all(
       courses.map(async (course) => {
         let categoryDetails = null;
 
-        // Only try to populate if category is a valid ObjectId
         if (mongoose.Types.ObjectId.isValid(course.category)) {
           const category = await this.courseModel
             .findById(course.category)
@@ -213,8 +239,8 @@ export class AdminService {
           if (category) {
             categoryDetails = {
               _id: category._id,
-              title: category.title,
-              description: category.description,
+              title: category.title[lang] || category.title.en,
+              description: category.description[lang] || category.description.en,
             };
           }
         }
@@ -226,14 +252,15 @@ export class AdminService {
 
         return {
           ...course,
-          category: categoryDetails, // Replace with populated data or null
+          title: course.title[lang] || course.title.en,
+          description: course.description[lang] || course.description.en,
+          category: categoryDetails,
           studentsCount,
           revenue,
         };
       }),
     );
 
-    // Count total documents (with same query filters)
     const total = await this.courseModel.countDocuments(query);
 
     return {
@@ -245,62 +272,19 @@ export class AdminService {
     };
   }
 
-  private isValidObjectId(id: string | Types.ObjectId): boolean {
-    if (id instanceof Types.ObjectId) return true;
-    return (
-      Types.ObjectId.isValid(id) && new Types.ObjectId(id).toString() === id
-    );
-  }
-
-  // Get enrolled students count (works with your schema)
-  private async getEnrolledStudentsCount(
-    courseId: Types.ObjectId,
-  ): Promise<number> {
-    const course = await this.courseModel
-      .findById(courseId)
-      .select('students')
-      .lean()
-      .exec();
-    return course?.students?.length || 0;
-  }
-  // In your admin.service.ts
-
-  private async getCourseRevenue(courseId: Types.ObjectId): Promise<number> {
+  // Modified to include language support
+  async getCategoriesWithCourseCounts(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     try {
-      const result = await this.orderModel.aggregate([
-        {
-          $match: {
-            courseId: courseId,
-            paymentStatus: 'paid',
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$coursePricing' },
-          },
-        },
-      ]);
-      return result[0]?.total || 0;
-    } catch (error) {
-      console.error('Error calculating course revenue:', error);
-      return 0;
-    }
-  }
-
-  async getCategoriesWithCourseCounts() {
-    try {
-      return await this.courseModel.aggregate([
-        // Stage 1: Only include valid ObjectId categories
+      const categories = await this.courseModel.aggregate([
         {
           $match: {
             category: {
               $exists: true,
-              $type: 'objectId' // Only ObjectId types
+              $type: 'objectId'
             }
           }
         },
-        // Stage 2: Lookup category data safely
         {
           $lookup: {
             from: 'categories',
@@ -315,14 +299,12 @@ export class AdminService {
             as: 'categoryData'
           }
         },
-        // Stage 3: Unwind safely
         {
           $unwind: {
             path: '$categoryData',
             preserveNullAndEmptyArrays: true
           }
         },
-        // Stage 4: Group by category
         {
           $group: {
             _id: '$category',
@@ -335,7 +317,6 @@ export class AdminService {
             courseCount: { $sum: 1 }
           }
         },
-        // Stage 5: Format output
         {
           $project: {
             _id: 0,
@@ -344,33 +325,35 @@ export class AdminService {
             courseCount: 1
           }
         },
-        // Stage 6: Sort
         { $sort: { courseCount: -1 } }
       ]);
+
+      // Apply language selection
+      const localizedCategories = categories.map(cat => ({
+        ...cat,
+        name: cat.name[lang] || cat.name.en
+      }));
+
+      return localizedCategories;
     } catch (error) {
       console.error('Error in getCategoriesWithCourseCounts:', error);
-      return [];
+      throw new BadRequestException(
+        lang === 'ar' 
+          ? 'حدث خطأ أثناء جلب الفئات' 
+          : 'Error fetching categories'
+      );
     }
   }
-  //   async getCategoryIdByName(categoryName: string): Promise<Types.ObjectId> {
-  //     const category = await this.categoryModel.findOne(
-  //       { 'title.en': categoryName },
-  //       { _id: 1 }
-  //     ).lean().exec();
 
-  //     if (!category) {
-  //       throw new NotFoundException(`Category "${categoryName}" not found`);
-  //     }
-
-  //     return category._id;
-  //   }
-  async getLastFiveMonthsRevenue() {
+  // Modified to include language support
+  async getLastFiveMonthsRevenue(lang: 'en' | 'ar' = 'en') {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
     const now = new Date();
     const months = Array.from({ length: 5 }, (_, i) => {
-      const date = subMonths(now, 4 - i); // Get months from oldest to newest
+      const date = subMonths(now, 4 - i);
       return {
-        name: format(date, 'MMM'), // "Jan", "Feb", etc.
-        fullName: format(date, 'MMMM'), // "January", "February", etc.
+        name: format(date, 'MMM'),
+        fullName: format(date, 'MMMM'),
         start: new Date(date.getFullYear(), date.getMonth(), 1),
         end: new Date(date.getFullYear(), date.getMonth() + 1, 0),
       };
@@ -393,12 +376,55 @@ export class AdminService {
           },
         ]);
         return {
-          month: month.name, // Short name (Jan, Feb)
+          month: month.name,
+          monthFullName: month.fullName,
           revenue: result[0]?.total || 0,
         };
       }),
     );
 
     return revenueData;
+  }
+
+  // Helper methods remain the same
+  private isValidObjectId(id: string | Types.ObjectId): boolean {
+    if (id instanceof Types.ObjectId) return true;
+    return (
+      Types.ObjectId.isValid(id) && new Types.ObjectId(id).toString() === id
+    );
+  }
+
+  private async getEnrolledStudentsCount(
+    courseId: Types.ObjectId,
+  ): Promise<number> {
+    const course = await this.courseModel
+      .findById(courseId)
+      .select('students')
+      .lean()
+      .exec();
+    return course?.students?.length || 0;
+  }
+
+  private async getCourseRevenue(courseId: Types.ObjectId): Promise<number> {
+    try {
+      const result = await this.orderModel.aggregate([
+        {
+          $match: {
+            courseId: courseId,
+            paymentStatus: 'paid',
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$coursePricing' },
+          },
+        },
+      ]);
+      return result[0]?.total || 0;
+    } catch (error) {
+      console.error('Error calculating course revenue:', error);
+      return 0;
+    }
   }
 }
