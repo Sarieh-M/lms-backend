@@ -148,8 +148,9 @@ export class StudentCourseService {
   user: JWTPayloadType,
   lang: 'en' | 'ar' = 'en'
 ) {
-  lang=['en','ar'].includes(lang)?lang:'en';
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
   const _userId = new Types.ObjectId(user.id);
+
   const student = await this.studentModel.findOne({ userId: _userId });
 
   if (!student) {
@@ -161,11 +162,12 @@ export class StudentCourseService {
     );
   }
 
-  const alreadyPurchased = student.courses.some((course) =>
-    course.idCourses.includes(courseId),
+  const alreadyPurchased = student.courses.some(course =>
+    course.idCourses.some((id) => id.toString() === courseId.toString())
   );
 
   return {
+    purchased: alreadyPurchased,
     message: getLangMessage(lang, {
       en: alreadyPurchased
         ? 'Course already purchased by student'
@@ -175,7 +177,7 @@ export class StudentCourseService {
         : 'لم يقم الطالب بشراء هذه الدورة',
     }),
   };
-  }
+}
 
   public async UpdateStudentCourses(order: HydratedDocument<Order>) {
     let studentCourse = await this.studentModel.findOne({ userId: order.userId });
