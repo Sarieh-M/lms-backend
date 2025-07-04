@@ -145,20 +145,17 @@ export class CourseController {
   @Get('all-filter')
   @ApiOperation({ summary: 'Retrieve all courses without role restrictions' })
   @ApiResponse({ status: 200, description: 'Courses fetched successfully' })
-  public getAllCoursesNoFilter(
+  public getAllCoursesFilter(
     @Query('sortBy') sortBy?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Headers('lang') lang: 'en' | 'ar' = 'en',
     @Query('search') search?: string,
   ) {
-    return this.courseService.getAllCoursesFilter(
-      sortBy,
-      +page,
-      +limit,
-      lang,
-      search,
-    );
+    const safePage = Math.max(1, +page); // Convert to number and ensure it's >= 1
+    const safeLimit = +limit; // Ensure limit is a number
+
+    return this.courseService.getAllCoursesFilter(sortBy, safePage, safeLimit, lang, search);
   }
   // GET COURSE BY ID [PUBLIC]
   @Get('getCourseById/:id')
@@ -171,6 +168,7 @@ export class CourseController {
   })
   @ApiResponse({ status: 404, description: 'Course not found' })
   public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
+    
     const lang = req.lang || 'en';
 
     if (!Types.ObjectId.isValid(id)) {
