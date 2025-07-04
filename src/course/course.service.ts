@@ -323,8 +323,6 @@ export class CourseService {
     currentPage: number;
     courses: any[];
   }> {
-    console.log('--- getAllCoursesFilter Call ---');
-    console.log('Input Params: sortBy=', sortBy, 'page=', page, 'limit=', limit, 'lang=', lang, 'search=', search);
 
     lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
@@ -338,7 +336,6 @@ export class CourseService {
         { [`subtitle.${lang}`]: searchRegex },
       ];
     }
-    console.log('Constructed finalFilter:', JSON.stringify(finalFilter, null, 2));
 
 
     let sortParam: any = {};
@@ -358,13 +355,10 @@ export class CourseService {
       default:
         sortParam = { pricing: 1 };
     }
-    console.log('Constructed sortParam:', JSON.stringify(sortParam, null, 2));
 
     const skip = (page - 1) * limit;
-    console.log('Pagination: skip=', skip, 'limit=', limit);
 
     const totalCourses = await this.courseModel.countDocuments(finalFilter);
-    console.log('Total Courses (matching filter):', totalCourses);
 
     const courses = await this.courseModel
       .find(finalFilter)
@@ -383,7 +377,6 @@ export class CourseService {
       .limit(limit)
       .exec();
 
-    console.log('Raw courses found by Mongoose:', courses.length, 'items.');
 
     const localizedCourses = courses.map((course) => {
       const obj = course.toObject();
@@ -427,8 +420,6 @@ export class CourseService {
       };
     });
 
-    console.log('Localized courses count:', localizedCourses.length);
-    console.log('--- End getAllCoursesFilter Call ---');
 
     return {
       totalCourses,
@@ -511,6 +502,7 @@ export class CourseService {
         curriculum: courseDetails.curriculum,
         students: formattedStudents,
         isPublished: courseDetails.isPublished,
+        createdAt: courseDetails.createdAt,
       };
     }
     return {
@@ -530,6 +522,7 @@ export class CourseService {
       curriculum: courseDetails.curriculum,
       students: formattedStudents,
       isPublished: courseDetails.isPublished,
+      createdAt: courseDetails.createdAt,
     };
   }
   //============================================================================
