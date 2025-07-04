@@ -123,7 +123,8 @@ export class UserController {
 
   //Get list of all users with filters and pagination [Admin only]
   @Get()
-  @UseGuards(AuthGuard, AuthRolesGuard)@Roles('admin')
+  @UseGuards(AuthGuard, AuthRolesGuard)
+  @Roles('admin')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Get all users with pagination and filters' })
   @ApiQuery({ name: 'page', required: false, type: Number })

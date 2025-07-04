@@ -27,24 +27,62 @@ export class StudentCourseService {
     @InjectModel(Course.name) private readonly courseModel: Model<Course>,
     @Inject(forwardRef(() => CourseService)) private readonly courseService: CourseService,
   ) {}
-
-public async getStudent(userId: string | Types.ObjectId, lang: 'en' | 'ar' = 'en') {
-  lang=['en','ar'].includes(lang)?lang:'en';
-  const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
-
-  const student = await this.studentModel.findOne({ userId: _userId });
+  public async enrollStudentInCourse(userId: Types.ObjectId, courseId: Types.ObjectId) {
+  // نحصل على الـ student document الفعلي
+  let student = await this.studentModel.findOne({ userId });
 
   if (!student) {
-    throw new NotFoundException(
-      getLangMessage(lang, {
-        en: 'Student not found',
-        ar: 'الطالب غير موجود',
-      }),
+    student = new this.studentModel({
+      userId,
+      courses: [{
+        idCourses: [courseId],
+        dateOfPurchase: new Date(),
+        ViewAt: null,
+      }]
+    });
+  } else {
+    const alreadyEnrolled = student.courses.some(entry =>
+      entry.idCourses.includes(courseId)
     );
+
+    if (!alreadyEnrolled) {
+      student.courses.push({
+        idCourses: [courseId],
+        dateOfPurchase: new Date(),
+        ViewAt: null,
+      });
+    }
   }
 
+  await student.save();
+
+  // تحديث قائمة الطلاب داخل الكورس
+  const studentId = student._id;
+
+  await this.courseModel.findByIdAndUpdate(courseId, {
+    $addToSet: { students: studentId }
+  });
+
   return student;
-}
+  }
+
+  public async getStudent(userId: string | Types.ObjectId, lang: 'en' | 'ar' = 'en') {
+    lang=['en','ar'].includes(lang)?lang:'en';
+    const _userId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+    const student = await this.studentModel.findOne({ userId: _userId });
+
+    if (!student) {
+      throw new NotFoundException(
+        getLangMessage(lang, {
+          en: 'Student not found',
+          ar: 'الطالب غير موجود',
+        }),
+      );
+    }
+
+    return student;
+  }
 
   public async AddStudent(userId: Types.ObjectId) {
     const student = await this.studentModel.create({ userId, courses: [] });
@@ -52,7 +90,7 @@ public async getStudent(userId: string | Types.ObjectId, lang: 'en' | 'ar' = 'en
     return student;
   }
 
-public async getAllStudentViewCourses(
+  public async getAllStudentViewCourses(
     category?: string,
     level?: string,
     primaryLanguage?: string,
@@ -101,11 +139,11 @@ public async getAllStudentViewCourses(
     };
   }
 
-public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
+  public async getStudentViewCourseDetails(id: Types.ObjectId): Promise<Course> {
     return await this.courseService.getCourseDetailsByID(id);
   }
 
-public async checkCoursePurchaseInfo(
+  public async checkCoursePurchaseInfo(
   courseId: Types.ObjectId,
   user: JWTPayloadType,
   lang: 'en' | 'ar' = 'en'
@@ -137,9 +175,9 @@ public async checkCoursePurchaseInfo(
         : 'لم يقم الطالب بشراء هذه الدورة',
     }),
   };
-}
+  }
 
-public async UpdateStudentCourses(order: HydratedDocument<Order>) {
+  public async UpdateStudentCourses(order: HydratedDocument<Order>) {
     let studentCourse = await this.studentModel.findOne({ userId: order.userId });
 
     if (studentCourse) {
@@ -160,7 +198,8 @@ public async UpdateStudentCourses(order: HydratedDocument<Order>) {
       await studentCourse.save();
     }
   }
-public async getAllCoursesForCurrentStudent(
+
+  public async getAllCoursesForCurrentStudent(
   idStudent: string | Types.ObjectId,
   payloadUser: JWTPayloadType,
    lang: 'en' | 'ar' = 'en'
@@ -195,9 +234,9 @@ public async getAllCoursesForCurrentStudent(
       }),
     );
   }
-}
+  }
 
-public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
+  public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
     let student = await this.studentModel.findOne({ userId });
     if (!student) {
       student = await this.studentModel.create({ userId, courses: [] });
@@ -205,43 +244,4 @@ public async getOrCreateStudent(userId: Types.ObjectId): Promise<Student> {
     return student;
   }
 
-
-public async enrollStudentInCourse(userId: Types.ObjectId, courseId: Types.ObjectId) {
-  // نحصل على الـ student document الفعلي
-  let student = await this.studentModel.findOne({ userId });
-
-  if (!student) {
-    student = new this.studentModel({
-      userId,
-      courses: [{
-        idCourses: [courseId],
-        dateOfPurchase: new Date(),
-        ViewAt: null,
-      }]
-    });
-  } else {
-    const alreadyEnrolled = student.courses.some(entry =>
-      entry.idCourses.includes(courseId)
-    );
-
-    if (!alreadyEnrolled) {
-      student.courses.push({
-        idCourses: [courseId],
-        dateOfPurchase: new Date(),
-        ViewAt: null,
-      });
-    }
-  }
-
-  await student.save();
-
-  // تحديث قائمة الطلاب داخل الكورس
-  const studentId = student._id;
-
-  await this.courseModel.findByIdAndUpdate(courseId, {
-    $addToSet: { students: studentId }
-  });
-
-  return student;
-}
 }

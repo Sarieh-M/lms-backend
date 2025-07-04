@@ -78,7 +78,7 @@ export class StudentCourseController {
     return this.studentCourseService.getAllCoursesForCurrentStudent(new Types.ObjectId(studentId),user,lang);
   }
 
-  @UseGuards(AuthGuard, AuthRolesGuard)
+@UseGuards(AuthGuard, AuthRolesGuard)
 @Roles('admin', 'teacher')
 @Post('enroll-student')
 @ApiOperation({ summary: 'Enroll student in course (admin/teacher only)' })

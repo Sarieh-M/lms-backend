@@ -9,7 +9,7 @@ import { JWTPayloadType } from 'utilitis/types';
 import { Types } from 'mongoose';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/user/guard/auth.guard';
-import { User } from 'src/user/schemas/user.schema';
+
 
 @ApiTags('Courses')
 @Controller('api/course')
@@ -60,7 +60,7 @@ export class CourseController {
 
     return this.courseService.updateCourseByID(new Types.ObjectId(id), updateCourseDto, user.id, lang);
   }
-  // get course for teacher
+  // get course for teacher [Teacher]
   @Get('my-courses')
   @UseGuards(AuthGuard, AuthRolesGuard)
   @Roles('teacher') 
@@ -103,27 +103,30 @@ export class CourseController {
     lang,
     req.user,  // ← يحتوي على user.role و user.id
   );
-}
-@Get('all-no-filter')
-@ApiOperation({ summary: 'Retrieve all courses without role restrictions' })
-@ApiResponse({ status: 200, description: 'Courses fetched successfully' })
-public getAllCoursesNoFilter(
-  @Query('sortBy') sortBy?: string,
-  @Query('page') page = 1,
-  @Query('limit') limit = 10,
-  @Headers('lang') lang: 'en' | 'ar' = 'en',  // اللغة من الهيدر مباشرة
-) {
-  return this.courseService.getAllCoursesNoFilter(sortBy, +page, +limit, lang);
-}
+  }
+  //Get All Courses [PUBLIC]
+  @Get('all-no-filter')
+  @ApiOperation({ summary: 'Retrieve all courses without role restrictions' })
+  @ApiResponse({ status: 200, description: 'Courses fetched successfully' })
+  public getAllCoursesNoFilter(
+    @Query('sortBy') sortBy?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Headers('lang') lang: 'en' | 'ar' = 'en',
+    
+  ) {
+    
+    return this.courseService.getAllCoursesNoFilter(sortBy, +page, +limit, lang,);
+  }
   // GET COURSE BY ID [PUBLIC]
   @Get('getCourseById/:id')
   @UseGuards(AuthGuard)
-@ApiOperation({ summary: 'Get course details by ID' })
-@ApiParam({ name: 'id', description: 'Course ID' })
-@ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
-@ApiResponse({ status: 404, description: 'Course not found' })
-public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
-  const lang = req.lang || 'en';
+  @ApiOperation({ summary: 'Get course details by ID' })
+  @ApiParam({ name: 'id', description: 'Course ID' })
+  @ApiResponse({ status: 200, description: 'Course details retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
+    const lang = req.lang || 'en';
 
   if (!Types.ObjectId.isValid(id)) {
     throw new BadRequestException({
@@ -155,13 +158,13 @@ public getCourseDetailsByID(@Param('id') id: string, @Req() req: any) {
 
     return this.courseService.deleteCourse(new Types.ObjectId(id), lang);
   }
-  //Get categories 
+  //Get categories [PUBLIC]
   @Get('categories')
   @ApiOperation({ summary: 'Get all available course categories' })
   async getCategories( ) {
     return this.courseService.getAllCategories();
   }
-  //Get levels 
+  //Get levels [PUBLIC]
   @Get('levels')
   @ApiOperation({ summary: 'Get all available course categories' })
   async getlevel( ) {

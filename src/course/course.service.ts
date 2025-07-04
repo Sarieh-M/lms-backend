@@ -1,24 +1,17 @@
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+
+import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateCourseDto, PrimaryLanguage } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { HydratedDocument, Model, SortOrder, Types } from 'mongoose';
+import { HydratedDocument, Model, Types } from 'mongoose';
 import { Course } from './schemas/course.schema';
 import { UserService } from 'src/user/user.service';
 import { Lecture } from './schemas/lecture.schema';
 import { Order } from 'src/order/schema/order.schema';
-import { UserRole } from 'utilitis/enums';
 import { Student } from 'src/student-course/schemas/student-course.schema';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { Level } from './schemas/level.schema';
-import { CurrentUser } from 'src/user/decorator/current-user.decorator';
+import mongoose from 'mongoose';
 
 @Injectable()
 export class CourseService {
@@ -28,18 +21,21 @@ export class CourseService {
     private readonly categoryModel: Model<CategoryDocument>,
     @InjectModel(Level.name) private readonly levelModel: Model<Level>,
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
-    @Inject(forwardRef(() => UserService))
-    private readonly userService: UserService,
-    @InjectModel(Lecture.name) private readonly lectureModel: Model<Lecture>,
-  ) {}
-  // Add a new course by instructor
-  // Validates instructor, creates course, links course to instructor
-  public async AddNewCourse(
-    createCourseDto: CreateCourseDto,
-    instructorId: Types.ObjectId,
-    lang: 'en' | 'ar' = 'en',
-  ) {
-    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
+    @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
+    
+    {}
+    
+    // Add a new course by instructor
+    // Validates instructor, creates course, links course to instructor
+    public async AddNewCourse(
+  createCourseDto: CreateCourseDto,
+  instructorId: Types.ObjectId,
+  lang: 'en' | 'ar' = 'en',
+) {
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
 
     const user = await this.userService.getCurrentUserDocument(
       instructorId,
@@ -488,27 +484,25 @@ export class CourseService {
         isPublished: courseDetails.isPublished,
       };
     }
-
-    // لغير الطالب، نعرض كل اللغات
-    return {
-      _id: courseDetails._id,
-      instructorId: courseDetails.instructorId,
-      instructorName: courseDetails.instructorName,
-      title: courseDetails.title ?? {},
-      category: courseDetails.category?.title ?? {},
-      level: courseDetails.level?.title ?? {},
-      image: courseDetails.image,
-      subtitle: courseDetails.subtitle ?? {},
-      primaryLanguage: courseDetails.primaryLanguage,
-      description: courseDetails.description ?? {},
-      welcomeMessage: courseDetails.welcomeMessage ?? {},
-      objectives: courseDetails.objectives ?? [],
-      pricing: courseDetails.pricing,
-      curriculum: courseDetails.curriculum,
-      students: formattedStudents,
-      isPublished: courseDetails.isPublished,
-    };
-  }
+   return {
+    _id: courseDetails._id,
+    instructorId: courseDetails.instructorId,
+    instructorName: courseDetails.instructorName,
+    title: courseDetails.title ?? {},
+    category: courseDetails.category?.title ?? {},
+    level: courseDetails.level?.title ?? {},
+    image: courseDetails.image,
+    subtitle: courseDetails.subtitle ?? {},
+    primaryLanguage: courseDetails.primaryLanguage,
+    description: courseDetails.description ?? {},
+    welcomeMessage: courseDetails.welcomeMessage ?? {},
+    objectives: courseDetails.objectives ?? [],
+    pricing: courseDetails.pricing,
+    curriculum: courseDetails.curriculum,
+    students: formattedStudents,
+    isPublished: courseDetails.isPublished,
+  };
+}
   //============================================================================
   // Update course by ID if instructor is authorized
   public async updateCourseByID(
