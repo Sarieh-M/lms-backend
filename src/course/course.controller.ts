@@ -170,4 +170,27 @@ export class CourseController {
   async getlevel( ) {
     return this.courseService.getAllLevels();
   }
+
+  @Get('stats/category-distribution')
+  @UseGuards(AuthGuard)
+  @Roles('admin')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Get course distribution by category (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Course distribution data retrieved successfully.' })
+  @ApiResponse({ status: 403, description: 'Forbidden. Only admins can access this resource.' })
+  public getCourseDistribution(@Req() req: any) {
+    const lang = req.lang || 'en';
+    return this.courseService.getCourseDistributionByCategory(lang);
+  }
+
+  @Get('stats/publication-status')
+  @UseGuards(AuthGuard)
+  @Roles('admin')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Get statistics on published vs. unpublished courses (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Publication status data retrieved successfully.' })
+  @ApiResponse({ status: 403, description: 'Forbidden. Only admins can access this resource.' })
+  public getCoursePublicationStats() {
+    return this.courseService.getCoursePublicationStats();
+  }
 }

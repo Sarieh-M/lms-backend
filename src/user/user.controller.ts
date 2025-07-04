@@ -180,4 +180,19 @@ export class UserController {
   public getDashboardStats() {
     return this.userService.getDashboardStats();
   }
+
+  //Get user growth for last 6 months [Admin only]
+  @Get('stats/growth')
+  @UseGuards(AuthGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Get user growth for the last 6 months (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User growth data retrieved successfully.' })
+  @ApiResponse({ status: 403, description: 'Forbidden. Only admins can access this resource.' })
+  public getUserGrowth(@Req() req: any) {
+    const lang = req.lang || 'en';
+    // The default is 6 months, which is what's requested.
+    // The default is 6 months, which is what's requested.
+    return this.userService.getUserGrowthForLastNMonths(6, lang);
+  }
 }

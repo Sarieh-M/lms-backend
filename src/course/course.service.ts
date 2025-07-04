@@ -1,5 +1,6 @@
+
 import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateCourseDto, PrimaryLanguage } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { HydratedDocument, Model, Types } from 'mongoose';
@@ -14,11 +15,13 @@ import mongoose from 'mongoose';
 
 @Injectable()
 export class CourseService {
-    constructor(
-    @InjectModel(Course.name)private readonly courseModel: Model<Course>,
-    @InjectModel(Category.name)private readonly categoryModel: Model<CategoryDocument>,
-    @InjectModel(Level.name)private readonly levelModel: Model<Level>,
+  constructor(
+    @InjectModel(Course.name) private readonly courseModel: Model<Course>,
+    @InjectModel(Category.name)
+    private readonly categoryModel: Model<CategoryDocument>,
+    @InjectModel(Level.name) private readonly levelModel: Model<Level>,
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
+
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
     
@@ -33,447 +36,455 @@ export class CourseService {
 ) {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-  const user = await this.userService.getCurrentUserDocument(instructorId, lang);
-  if (!user) {
-    const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-    throw new NotFoundException(message);
-  }
 
-  let categoryId: Types.ObjectId | null = null;
-  if (Types.ObjectId.isValid(createCourseDto.category)) {
-    categoryId = new Types.ObjectId(createCourseDto.category);
-  } else {
-    const category = await this.categoryModel.findOne({
-      $or: [
-        { 'title.en': createCourseDto.category },
-        { 'title.ar': createCourseDto.category },
-      ],
-    });
-    if (!category) {
-      const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
-      throw new NotFoundException(message);
-    }
-    categoryId = category._id as Types.ObjectId;
-  }
-
-  let levelId: Types.ObjectId | null = null;
-  if (Types.ObjectId.isValid(createCourseDto.level)) {
-    levelId = new Types.ObjectId(createCourseDto.level);
-  } else {
-    const level = await this.levelModel.findOne({
-      $or: [
-        { 'title.en': createCourseDto.level },
-        { 'title.ar': createCourseDto.level },
-      ],
-    });
-    if (!level) {
-      const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
-      throw new NotFoundException(message);
-    }
-    levelId = level._id as Types.ObjectId;
-  }
-
-  const toLowerObject = (obj: { en: string; ar: string }) => ({
-    en: obj.en.toLowerCase(),
-    ar: obj.ar.toLowerCase(),
-  });
-
-  try {
-    const lectureIds: Types.ObjectId[] = [];
-
-    if (createCourseDto.lectures && createCourseDto.lectures.length > 0) {
-      for (const lectureDto of createCourseDto.lectures) {
-        const lecture = await this.lectureModel.create({
-          ...lectureDto,
-          title: toLowerObject(lectureDto.title),
-        });
-        lectureIds.push(lecture._id);
-      }
-    }
-
-    const newCourse = await this.courseModel.create({
+    const user = await this.userService.getCurrentUserDocument(
       instructorId,
-      instructorName: user.userName,
-      title: toLowerObject(createCourseDto.title),
-      description: toLowerObject(createCourseDto.description),
-      welcomeMessage: toLowerObject(createCourseDto.welcomeMessage),
-      subtitle: toLowerObject(createCourseDto.subtitle),
-      objectives: toLowerObject(createCourseDto.objectives),
-      category: categoryId,
-      level: levelId,
-      curriculum: lectureIds,
-      image: createCourseDto.image || '',
-      pricing: createCourseDto.pricing,
-      isPublished: createCourseDto.isPublished ?? false,
-      primaryLanguage: createCourseDto.primaryLanguage,
+      lang,
+    );
+    if (!user) {
+      const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+      throw new NotFoundException(message);
+    }
+
+    let categoryId: Types.ObjectId | null = null;
+    if (Types.ObjectId.isValid(createCourseDto.category)) {
+      categoryId = new Types.ObjectId(createCourseDto.category);
+    } else {
+      const category = await this.categoryModel.findOne({
+        $or: [
+          { 'title.en': createCourseDto.category },
+          { 'title.ar': createCourseDto.category },
+        ],
+      });
+      if (!category) {
+        const message =
+          lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
+        throw new NotFoundException(message);
+      }
+      categoryId = category._id as Types.ObjectId;
+    }
+
+    let levelId: Types.ObjectId | null = null;
+    if (Types.ObjectId.isValid(createCourseDto.level)) {
+      levelId = new Types.ObjectId(createCourseDto.level);
+    } else {
+      const level = await this.levelModel.findOne({
+        $or: [
+          { 'title.en': createCourseDto.level },
+          { 'title.ar': createCourseDto.level },
+        ],
+      });
+      if (!level) {
+        const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
+        throw new NotFoundException(message);
+      }
+      levelId = level._id as Types.ObjectId;
+    }
+
+    const toLowerObject = (obj: { en: string; ar: string }) => ({
+      en: obj.en.toLowerCase(),
+      ar: obj.ar.toLowerCase(),
     });
 
-    user.enrolledCourses.push(newCourse._id);
-    await user.save();
+    try {
+      const lectureIds: Types.ObjectId[] = [];
 
-    return {
-      statusCode: 201,
-      message: lang === 'ar' ? 'تم إنشاء الدورة بنجاح' : 'Course created successfully',
-    };
-  } catch (error) {
-    console.error(error);
-    const message = lang === 'ar'
-      ? 'حدث خطأ أثناء إنشاء الدورة'
-      : 'An error occurred while creating the course';
-    throw new InternalServerErrorException(message);
-  }
-}
-    //============================================================================
-    // Get all courses with filters, sorting, pagination, and role-based access 
-     public async getAllCourses(
-  category?: string,
-  level?: string,
-  primaryLanguage?: string,
-  sortBy: string = 'price-lowtohigh',
-  page: number = 1,
-  limit: number = 10,
-  useFilter: boolean = false,
-  lang: 'en' | 'ar' = 'en',
-  user?: any
-): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
-  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-  const currentUser = await this.userService.getCurrentUserDocument(user.id);
-  const role = currentUser?.role || 'guest';
-  const isStudent = role === 'student';
-
-  const baseFilters: any = {};
-  if (level) baseFilters[`level.title.${lang}`] = { $regex: level, $options: 'i' };
-  if (primaryLanguage) baseFilters.primaryLanguage = { $regex: primaryLanguage, $options: 'i' };
-  if (category) baseFilters[`category.title.${lang}`] = { $regex: category, $options: 'i' };
-
-  let roleFilter: any = {};
-  switch (role) {
-    case 'admin':
-      break;
-
-    case 'teacher':
-      roleFilter = { instructorId: currentUser._id };
-      break;
-
-    case 'student':
-      const student = await this.studentModel.findOne({ userId: currentUser._id });
-
-      if (student && student.courses?.length) {
-        const enrolledCourseIds = student.courses.flatMap(c => c.idCourses || []);
-        roleFilter = { _id: { $in: enrolledCourseIds } };
-      } else {
-        roleFilter = { _id: { $in: [] } };
-      }
-      break;
-
-    default:
-      roleFilter = { _id: { $in: [] } };
-  }
-
-  const finalFilter = {
-    ...(useFilter ? baseFilters : {}),
-    ...roleFilter,
-  };
-
-  let sortParam: any = {};
-  switch (sortBy) {
-    case 'price-lowtohigh':
-      sortParam = { pricing: 1 };
-      break;
-    case 'price-hightolow':
-      sortParam = { pricing: -1 };
-      break;
-    case 'title-atoz':
-      sortParam = { [`title.${lang}`]: 1 };
-      break;
-    case 'title-ztoa':
-      sortParam = { [`title.${lang}`]: -1 };
-      break;
-    default:
-      sortParam = { pricing: 1 };
-  }
-
-  const skip = (page - 1) * limit;
-  const totalCourses = await this.courseModel.countDocuments(finalFilter);
-
-  const courses = await this.courseModel
-    .find(finalFilter)
-    .populate('category', 'title')
-    .populate('level', 'title')
-    .populate({
-      path: 'students',
-      populate: {
-        path: 'userId',
-        model: 'User',
-        select: '_id userName userEmail gender',
-      },
-    })
-    .sort(sortParam)
-    .skip(skip)
-    .limit(limit)
-    .exec();
-
-  const localizedCourses = courses.map(course => {
-    const obj = course.toObject();
-
-    const categoryTitle =
-      obj.category && typeof obj.category !== 'string' && 'title' in obj.category
-        ? obj.category.title
-        : {};
-
-    const levelTitle =
-      obj.level && typeof obj.level !== 'string' && 'title' in obj.level
-        ? obj.level.title
-        : {};
-
-    const formattedStudents = (obj.students || []).map((student: any) => {
-      const user = student.userId;
-      if (!user) return null;
-
-      return {
-        _id: user._id,
-        userName: user.userName,
-        userEmail: user.userEmail,
-        gender: user.gender,
-      };
-    }).filter(Boolean);
-
-    if (isStudent) {
-      return {
-        ...obj,
-        title: obj.title?.[lang] ?? '',
-        description: obj.description?.[lang] ?? '',
-        subtitle: obj.subtitle?.[lang] ?? '',
-        welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
-        objectives: obj.objectives?.[lang] ?? '',
-        level: levelTitle?.[lang] ?? '',
-        category: categoryTitle?.[lang] ?? '',
-        students: formattedStudents,
-      };
-    } else {
-      return {
-        ...obj,
-        title: obj.title ?? {},
-        description: obj.description ?? {},
-        subtitle: obj.subtitle ?? {},
-        welcomeMessage: obj.welcomeMessage ?? {},
-        objectives: obj.objectives ?? {},
-        level: levelTitle ?? {},
-        category: categoryTitle ?? {},
-        students: formattedStudents,
-      };
-    }
-  });
-
-  return {
-    totalCourses,
-    totalPages: Math.ceil(totalCourses / limit),
-    currentPage: page,
-    courses: localizedCourses,
-  };
-}
-    //============================================================================
-    // Get all courses  sorting, pagination, and role-based access 
-    isUUID = (value: any): boolean => {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);};
-
-    public async getAllCoursesNoFilter(
-      sortBy: string = 'price-lowtohigh',
-      page: number = 1,
-      limit: number = 10,
-      lang: 'en' | 'ar' = 'en',
-    ): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-      const finalFilter = {};
-
-      let sortParam: any = {};
-      switch (sortBy) {
-        case 'price-lowtohigh':
-          sortParam = { pricing: 1 };
-          break;
-        case 'price-hightolow':
-          sortParam = { pricing: -1 };
-          break;
-        case 'title-atoz':
-          sortParam = { [`title.${lang}`]: 1 };
-          break;
-        case 'title-ztoa':
-          sortParam = { [`title.${lang}`]: -1 };
-          break;
-        default:
-          sortParam = { pricing: 1 };
-      }
-
-      const skip = (page - 1) * limit;
-      const totalCourses = await this.courseModel.countDocuments(finalFilter);
-
-      const courses = await this.courseModel
-        .find(finalFilter)
-        .populate('category', 'title')
-        .populate('level', 'title')
-        .populate({
-          path: 'students',
-          populate: {
-            path: 'userId',
-            model: 'User',
-            select: '_id userName userEmail gender',
-          },
-        })
-        .sort(sortParam)
-        .skip(skip)
-        .limit(limit)
-        .exec();
-
-      const localizedCourses = [];
-
-      for (const course of courses) {
-        const obj = course.toObject();
-
-        const curriculumItems = Array.isArray(obj.curriculum) ? obj.curriculum : [];
-        const validLectureIds: any[] = [];
-
-        for (const item of curriculumItems) {
-          if (this.isUUID(item)) {
-            const lecture = await this.lectureModel.findOne({ id: item });
-            if (lecture) validLectureIds.push(lecture._id);
-          } else if (mongoose.Types.ObjectId.isValid(item)) {
-            validLectureIds.push(new mongoose.Types.ObjectId(item));
-          }
+      if (createCourseDto.lectures && createCourseDto.lectures.length > 0) {
+        for (const lectureDto of createCourseDto.lectures) {
+          const lecture = await this.lectureModel.create({
+            ...lectureDto,
+            title: toLowerObject(lectureDto.title),
+          });
+          lectureIds.push(lecture._id);
         }
+      }
 
-        const lectureDocs = await this.lectureModel.find({ _id: { $in: validLectureIds } });
+      const newCourse = await this.courseModel.create({
+        instructorId,
+        instructorName: user.userName,
+        title: toLowerObject(createCourseDto.title),
+        description: toLowerObject(createCourseDto.description),
+        welcomeMessage: toLowerObject(createCourseDto.welcomeMessage),
+        subtitle: toLowerObject(createCourseDto.subtitle),
+        objectives: toLowerObject(createCourseDto.objectives),
+        category: categoryId,
+        level: levelId,
+        curriculum: lectureIds,
+        image: createCourseDto.image || '',
+        pricing: createCourseDto.pricing,
+        isPublished: createCourseDto.isPublished ?? false,
+        primaryLanguage: createCourseDto.primaryLanguage,
+      });
 
-        const formattedLectures = lectureDocs.map(lecture => ({
-          _id: lecture._id,
-          title: lecture.title?.[lang] ?? '',
-          videoUrl: lecture.videoUrl,
-          public_id: lecture.public_id,
-          freePreview: lecture.freePreview,
-        }));
+      user.enrolledCourses.push(newCourse._id);
+      await user.save();
 
-        // ===============================
-        // Step 2: معالجة الطلاب
-        // ===============================
-        const formattedStudents = (obj.students || []).map((student: any) => {
+      return {
+        statusCode: 201,
+        message:
+          lang === 'ar'
+            ? 'تم إنشاء الدورة بنجاح'
+            : 'Course created successfully',
+      };
+    } catch (error) {
+      console.error(error);
+      const message =
+        lang === 'ar'
+          ? 'حدث خطأ أثناء إنشاء الدورة'
+          : 'An error occurred while creating the course';
+      throw new InternalServerErrorException(message);
+    }
+  }
+  //============================================================================
+  // Get all courses with filters, sorting, pagination, and role-based access
+  public async getAllCourses(
+    category?: string,
+    level?: string,
+    primaryLanguage?: string,
+    sortBy: string = 'price-lowtohigh',
+    page: number = 1,
+    limit: number = 10,
+    useFilter: boolean = false,
+    lang: 'en' | 'ar' = 'en',
+    user?: any,
+  ): Promise<{
+    totalCourses: number;
+    totalPages: number;
+    currentPage: number;
+    courses: any[];
+  }> {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    const currentUser = await this.userService.getCurrentUserDocument(user.id);
+    const role = currentUser?.role || 'guest';
+    const isStudent = role === 'student';
+
+    const baseFilters: any = {};
+    if (level)
+      baseFilters[`level.title.${lang}`] = { $regex: level, $options: 'i' };
+    if (primaryLanguage)
+      baseFilters.primaryLanguage = { $regex: primaryLanguage, $options: 'i' };
+    if (category)
+      baseFilters[`category.title.${lang}`] = {
+        $regex: category,
+        $options: 'i',
+      };
+
+    let roleFilter: any = {};
+    switch (role) {
+      case 'admin':
+        break;
+
+      case 'teacher':
+        roleFilter = { instructorId: currentUser._id };
+        break;
+
+      case 'student':
+        const student = await this.studentModel.findOne({
+          userId: currentUser._id,
+        });
+
+        if (student && student.courses?.length) {
+          const enrolledCourseIds = student.courses.flatMap(
+            (c) => c.idCourses || [],
+          );
+          roleFilter = { _id: { $in: enrolledCourseIds } };
+        } else {
+          roleFilter = { _id: { $in: [] } };
+        }
+        break;
+
+      default:
+        roleFilter = { _id: { $in: [] } };
+    }
+
+    const finalFilter = {
+      ...(useFilter ? baseFilters : {}),
+      ...roleFilter,
+    };
+
+    let sortParam: any = {};
+    switch (sortBy) {
+      case 'price-lowtohigh':
+        sortParam = { pricing: 1 };
+        break;
+      case 'price-hightolow':
+        sortParam = { pricing: -1 };
+        break;
+      case 'title-atoz':
+        sortParam = { [`title.${lang}`]: 1 };
+        break;
+      case 'title-ztoa':
+        sortParam = { [`title.${lang}`]: -1 };
+        break;
+      default:
+        sortParam = { pricing: 1 };
+    }
+
+    const skip = (page - 1) * limit;
+    const totalCourses = await this.courseModel.countDocuments(finalFilter);
+
+    const courses = await this.courseModel
+      .find(finalFilter)
+      .populate('category', 'title')
+      .populate('level', 'title')
+      .populate({
+        path: 'students',
+        populate: {
+          path: 'userId',
+          model: 'User',
+          select: '_id userName userEmail gender',
+        },
+      })
+      .sort(sortParam)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    const localizedCourses = courses.map((course) => {
+      const obj = course.toObject();
+
+      const categoryTitle =
+        obj.category &&
+        typeof obj.category !== 'string' &&
+        'title' in obj.category
+          ? obj.category.title
+          : {};
+
+      const levelTitle =
+        obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+          ? obj.level.title
+          : {};
+
+      const formattedStudents = (obj.students || [])
+        .map((student: any) => {
           const user = student.userId;
           if (!user) return null;
+
           return {
             _id: user._id,
             userName: user.userName,
             userEmail: user.userEmail,
             gender: user.gender,
           };
-        }).filter(Boolean);
+        })
+        .filter(Boolean);
 
-        // ===============================
-        // Step 3: معالجة العناوين المترجمة
-        // ===============================
-        const categoryTitle =
-          obj.category && typeof obj.category !== 'string' && 'title' in obj.category
-            ? obj.category.title?.[lang]
-            : '';
-
-        const levelTitle =
-          obj.level && typeof obj.level !== 'string' && 'title' in obj.level
-            ? obj.level.title?.[lang]
-            : '';
-
-        localizedCourses.push({
+      if (isStudent) {
+        return {
           ...obj,
           title: obj.title?.[lang] ?? '',
           description: obj.description?.[lang] ?? '',
           subtitle: obj.subtitle?.[lang] ?? '',
           welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
-          level: levelTitle,
-          category: categoryTitle,
           objectives: obj.objectives?.[lang] ?? '',
+          level: levelTitle?.[lang] ?? '',
+          category: categoryTitle?.[lang] ?? '',
           students: formattedStudents,
-          curriculum: formattedLectures, // استبدل الـ curriculum بالمحاضرات المحمّلة
-        });
+        };
+      } else {
+        return {
+          ...obj,
+          title: obj.title ?? {},
+          description: obj.description ?? {},
+          subtitle: obj.subtitle ?? {},
+          welcomeMessage: obj.welcomeMessage ?? {},
+          objectives: obj.objectives ?? {},
+          level: levelTitle ?? {},
+          category: categoryTitle ?? {},
+          students: formattedStudents,
+        };
       }
+    });
+
+    return {
+      totalCourses,
+      totalPages: Math.ceil(totalCourses / limit),
+      currentPage: page,
+      courses: localizedCourses,
+    };
+  }
+  //============================================================================
+  // Get all courses  sorting, pagination, and role-based access
+  public async getAllCoursesNoFilter(
+    sortBy: string = 'price-lowtohigh',
+    page: number = 1,
+    limit: number = 10,
+    lang: 'en' | 'ar' = 'en',
+  ): Promise<{
+    totalCourses: number;
+    totalPages: number;
+    currentPage: number;
+    courses: any[];
+  }> {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    const finalFilter = {};
+
+    let sortParam: any = {};
+    switch (sortBy) {
+      case 'price-lowtohigh':
+        sortParam = { pricing: 1 };
+        break;
+      case 'price-hightolow':
+        sortParam = { pricing: -1 };
+        break;
+      case 'title-atoz':
+        sortParam = { [`title.${lang}`]: 1 };
+        break;
+      case 'title-ztoa':
+        sortParam = { [`title.${lang}`]: -1 };
+        break;
+      default:
+        sortParam = { pricing: 1 };
+    }
+
+    const skip = (page - 1) * limit;
+    const totalCourses = await this.courseModel.countDocuments(finalFilter);
+
+    const courses = await this.courseModel
+      .find(finalFilter)
+      .populate('category', 'title')
+      .populate('level', 'title')
+      .populate({
+        path: 'students',
+        populate: {
+          path: 'userId',
+          model: 'User',
+          select: '_id userName userEmail gender',
+        },
+      })
+      .sort(sortParam)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    const localizedCourses = courses.map((course) => {
+      const obj = course.toObject();
+
+      const categoryTitle =
+        obj.category &&
+        typeof obj.category !== 'string' &&
+        'title' in obj.category
+          ? obj.category.title
+          : {};
+
+      const levelTitle =
+        obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+          ? obj.level.title
+          : {};
+
+      const formattedStudents = (obj.students || [])
+        .map((student: any) => {
+          const user = student.userId;
+          if (!user) return null;
+
+          return {
+            _id: user._id,
+            userName: user.userName,
+            userEmail: user.userEmail,
+            gender: user.gender,
+          };
+        })
+        .filter(Boolean);
 
       return {
-        totalCourses,
-        totalPages: Math.ceil(totalCourses / limit),
-        currentPage: page,
-        courses: localizedCourses,
+        ...obj,
+        title: obj.title?.[lang] ?? '',
+        description: obj.description?.[lang] ?? '',
+        subtitle: obj.subtitle?.[lang] ?? '',
+        welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
+        level: levelTitle?.[lang] ?? '',
+        category: categoryTitle?.[lang] ?? '',
+        objectives: obj.objectives?.[lang] ?? '',
+        students: formattedStudents,
+      };
+    });
+
+    return {
+      totalCourses,
+      totalPages: Math.ceil(totalCourses / limit),
+      currentPage: page,
+      courses: localizedCourses,
+    };
+  }
+  //============================================================================
+  // Get course details by ID with localization
+  public async getCourseDetailsByID(
+    id: Types.ObjectId,
+    lang: 'en' | 'ar' = 'en',
+    user?: any,
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    const currentUser = await this.userService.getCurrentUserDocument(user.id);
+    const role = currentUser?.role || 'guest';
+    const isStudent = role === 'student';
+
+    const courseDetails = (await this.courseModel
+      .findById(id)
+      .populate('curriculum')
+      .populate('category')
+      .populate('level')
+      .populate({
+        path: 'students',
+        populate: {
+          path: 'userId',
+          model: 'User',
+          select: '_id userName userEmail gender',
+        },
+      })) as any;
+
+    if (!courseDetails) {
+      const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+      throw new NotFoundException(message);
+    }
+
+    const getLocalizedValue = (field: any) => {
+      return field?.[lang] ?? '';
+    };
+
+    const getLocalizedArray = (arr: any[]) => {
+      return Array.isArray(arr) ? arr.map((obj) => obj?.[lang] ?? '') : [];
+    };
+
+    // معالجة بيانات الطلاب
+    const formattedStudents = (courseDetails.students || [])
+      .map((student: any) => {
+        const user = student.userId;
+        if (!user) return null;
+
+        return {
+          _id: user._id,
+          userName: user.userName,
+          userEmail: user.userEmail,
+          gender: user.gender,
+        };
+      })
+      .filter(Boolean);
+
+    // إذا كان الطالب، نعرض المعلومات بلغته فقط
+    if (isStudent) {
+      return {
+        _id: courseDetails._id,
+        instructorId: courseDetails.instructorId,
+        instructorName: courseDetails.instructorName,
+        title: getLocalizedValue(courseDetails.title),
+        category: getLocalizedValue(courseDetails.category?.title),
+        level: getLocalizedValue(courseDetails.level?.title),
+        image: courseDetails.image,
+        subtitle: getLocalizedValue(courseDetails.subtitle),
+        primaryLanguage: courseDetails.primaryLanguage,
+        description: getLocalizedValue(courseDetails.description),
+        welcomeMessage: getLocalizedValue(courseDetails.welcomeMessage),
+        objectives: getLocalizedArray(courseDetails.objectives),
+        pricing: courseDetails.pricing,
+        curriculum: courseDetails.curriculum,
+        students: formattedStudents,
+        isPublished: courseDetails.isPublished,
       };
     }
-    //============================================================================
-    // Get course details by ID with localization
-    public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en', user?: any) {
-  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-  const currentUser = await this.userService.getCurrentUserDocument(user.id);
-  const role = currentUser?.role || 'guest';
-  const isStudent = role === 'student';
-
-  const courseDetails = await this.courseModel
-    .findById(id)
-    .populate('curriculum')
-    .populate('category')
-    .populate('level')
-    .populate({
-      path: 'students',
-      populate: {
-        path: 'userId',
-        model: 'User',
-        select: '_id userName userEmail gender',
-      },
-    }) as any;
-
-  if (!courseDetails) {
-    const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
-    throw new NotFoundException(message);
-  }
-
-  const getLocalizedValue = (field: any) => {
-    return field?.[lang] ?? '';
-  };
-
-  const getLocalizedArray = (arr: any[]) => {
-    return Array.isArray(arr) ? arr.map(obj => obj?.[lang] ?? '') : [];
-  };
-
-  // معالجة بيانات الطلاب
-  const formattedStudents = (courseDetails.students || []).map((student: any) => {
-    const user = student.userId;
-    if (!user) return null;
-
-    return {
-      _id: user._id,
-      userName: user.userName,
-      userEmail: user.userEmail,
-      gender: user.gender,
-    };
-  }).filter(Boolean);
-
-  // إذا كان الطالب، نعرض المعلومات بلغته فقط
-  if (isStudent) {
-    return {
-      _id: courseDetails._id,
-      instructorId: courseDetails.instructorId,
-      instructorName: courseDetails.instructorName,
-      title: getLocalizedValue(courseDetails.title),
-      category: getLocalizedValue(courseDetails.category?.title),
-      level: getLocalizedValue(courseDetails.level?.title),
-      image: courseDetails.image,
-      subtitle: getLocalizedValue(courseDetails.subtitle),
-      primaryLanguage: courseDetails.primaryLanguage,
-      description: getLocalizedValue(courseDetails.description),
-      welcomeMessage: getLocalizedValue(courseDetails.welcomeMessage),
-      objectives: getLocalizedArray(courseDetails.objectives),
-      pricing: courseDetails.pricing,
-      curriculum: courseDetails.curriculum,
-      students: formattedStudents,
-      isPublished: courseDetails.isPublished,
-    };
-  }
-
-  // لغير الطالب، نعرض كل اللغات
-  return {
+   return {
     _id: courseDetails._id,
     instructorId: courseDetails.instructorId,
     instructorName: courseDetails.instructorName,
@@ -492,214 +503,313 @@ export class CourseService {
     isPublished: courseDetails.isPublished,
   };
 }
-    //============================================================================
-    // Update course by ID if instructor is authorized
-    public async updateCourseByID(id: Types.ObjectId,updateCourseDto: UpdateCourseDto,
-      instructorId: Types.ObjectId,lang: 'en' | 'ar' = 'en',) {
-  
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-      const course = await this.courseModel.findById(id);
-      if (!course) {
-        const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
-        throw new NotFoundException(message);
+  //============================================================================
+  // Update course by ID if instructor is authorized
+  public async updateCourseByID(
+    id: Types.ObjectId,
+    updateCourseDto: UpdateCourseDto,
+    instructorId: Types.ObjectId,
+    lang: 'en' | 'ar' = 'en',
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+    const course = await this.courseModel.findById(id);
+    if (!course) {
+      const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+      throw new NotFoundException(message);
+    }
+
+    if (course.instructorId.toString() !== instructorId.toString()) {
+      const message =
+        lang === 'ar'
+          ? 'لست مخولًا لتحديث هذه الدورة'
+          : 'You are not authorized to update this course';
+      throw new UnauthorizedException(message);
+    }
+
+    try {
+      //==================categories
+      if (updateCourseDto.category) {
+        const newCategory = (await this.categoryModel.findOne({
+          $or: [
+            { 'title.en': updateCourseDto.category },
+            { 'title.ar': updateCourseDto.category },
+          ],
+        })) as HydratedDocument<Category>;
+
+        if (!newCategory) {
+          const message =
+            lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
+          throw new NotFoundException(message);
+        }
+
+        updateCourseDto.category = newCategory._id;
+      }
+      //==================levels
+      if (updateCourseDto.level) {
+        const newLevel = (await this.levelModel.findOne({
+          $or: [
+            { 'title.en': updateCourseDto.level },
+            { 'title.ar': updateCourseDto.level },
+          ],
+        })) as HydratedDocument<Level>;
+
+        if (!newLevel) {
+          const message =
+            lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
+          throw new NotFoundException(message);
+        }
+
+        updateCourseDto.level = newLevel._id as Types.ObjectId;
       }
 
-      if (course.instructorId.toString() !== instructorId.toString()) {
-        const message = lang === 'ar' ? 'لست مخولًا لتحديث هذه الدورة' : 'You are not authorized to update this course';
-        throw new UnauthorizedException(message);
-      }
-
-      try {
-        //==================categories
-        if (updateCourseDto.category) {
-          const newCategory = await this.categoryModel.findOne({
-            $or: [
-              { 'title.en': updateCourseDto.category },
-              { 'title.ar': updateCourseDto.category },
-            ],
-          }) as HydratedDocument<Category>;
-
-          if (!newCategory) {
-            const message = lang === 'ar' ? 'التصنيف غير موجود' : 'Category not found';
-            throw new NotFoundException(message);
-          }
-
-          updateCourseDto.category = newCategory._id;
-        }
-        //==================levels
-        if (updateCourseDto.level) {
-          const newLevel = await this.levelModel.findOne({
-            $or: [
-              { 'title.en': updateCourseDto.level },
-              { 'title.ar': updateCourseDto.level },
-            ],
-          }) as HydratedDocument<Level>;
-
-          if (!newLevel) {
-            const message = lang === 'ar' ? 'المستوى غير موجود' : 'Level not found';
-            throw new NotFoundException(message);
-          }
-
-          updateCourseDto.level = newLevel._id as Types.ObjectId;
-        }
-
-        //  This one for lecture
-        if (updateCourseDto.lectures && updateCourseDto.lectures.length > 0) {
-          for (const lectureDto of updateCourseDto.lectures) {
-            const newLecture = await this.lectureModel.create({
-              ...lectureDto,
-              title: {
-                en: lectureDto.title.en.toLowerCase(),
-                ar: lectureDto.title.ar.toLowerCase(),
-              },
-            });
-            course.curriculum.push(newLecture._id);
-          }
-          await course.save(); 
-        }
-
-        
-        const updatedCourse = await this.courseModel.findByIdAndUpdate(
-          id,
-          {
-            ...updateCourseDto,
+      //  This one for lecture
+      if (updateCourseDto.lectures && updateCourseDto.lectures.length > 0) {
+        for (const lectureDto of updateCourseDto.lectures) {
+          const newLecture = await this.lectureModel.create({
+            ...lectureDto,
             title: {
-              en: updateCourseDto.title?.en?.toLowerCase() ?? course.title.en,
-              ar: updateCourseDto.title?.ar?.toLowerCase() ?? course.title.ar,
+              en: lectureDto.title.en.toLowerCase(),
+              ar: lectureDto.title.ar.toLowerCase(),
             },
-            description: {
-              en: updateCourseDto.description?.en?.toLowerCase() ?? course.description.en,
-              ar: updateCourseDto.description?.ar?.toLowerCase() ?? course.description.ar,
-            },
-            welcomeMessage: {
-              en: updateCourseDto.welcomeMessage?.en?.toLowerCase() ?? course.welcomeMessage.en,
-              ar: updateCourseDto.welcomeMessage?.ar?.toLowerCase() ?? course.welcomeMessage.ar,
-            },
-            subtitle: {
-              en: updateCourseDto.subtitle?.en?.toLowerCase() ?? course.subtitle.en,
-              ar: updateCourseDto.subtitle?.ar?.toLowerCase() ?? course.subtitle.ar,
-            },
-          },
-          { new: true },
-        );
-
-        if (!updatedCourse) {
-          const message = lang === 'ar' ? 'فشل في تحديث الدورة' : 'Failed to update the course';
-          throw new NotFoundException(message);
+          });
+          course.curriculum.push(newLecture._id);
         }
-
-        return updatedCourse;
-      } catch (error) {
-        const message = lang === 'ar' ? 'حدث خطأ أثناء تحديث الدورة' : 'An error occurred while updating the course';
-        throw new InternalServerErrorException(message);
+        await course.save();
       }
+
+      const updatedCourse = await this.courseModel.findByIdAndUpdate(
+        id,
+        {
+          ...updateCourseDto,
+          title: {
+            en: updateCourseDto.title?.en?.toLowerCase() ?? course.title.en,
+            ar: updateCourseDto.title?.ar?.toLowerCase() ?? course.title.ar,
+          },
+          description: {
+            en:
+              updateCourseDto.description?.en?.toLowerCase() ??
+              course.description.en,
+            ar:
+              updateCourseDto.description?.ar?.toLowerCase() ??
+              course.description.ar,
+          },
+          welcomeMessage: {
+            en:
+              updateCourseDto.welcomeMessage?.en?.toLowerCase() ??
+              course.welcomeMessage.en,
+            ar:
+              updateCourseDto.welcomeMessage?.ar?.toLowerCase() ??
+              course.welcomeMessage.ar,
+          },
+          subtitle: {
+            en:
+              updateCourseDto.subtitle?.en?.toLowerCase() ?? course.subtitle.en,
+            ar:
+              updateCourseDto.subtitle?.ar?.toLowerCase() ?? course.subtitle.ar,
+          },
+        },
+        { new: true },
+      );
+
+      if (!updatedCourse) {
+        const message =
+          lang === 'ar' ? 'فشل في تحديث الدورة' : 'Failed to update the course';
+        throw new NotFoundException(message);
+      }
+
+      return updatedCourse;
+    } catch (error) {
+      const message =
+        lang === 'ar'
+          ? 'حدث خطأ أثناء تحديث الدورة'
+          : 'An error occurred while updating the course';
+      throw new InternalServerErrorException(message);
     }
-    //============================================================================
-    // Update course students list after purchase
-    public async updateCourseJustFieldStudent(order: HydratedDocument<Order>, lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
+  }
+  //============================================================================
+  // Update course students list after purchase
+  public async updateCourseJustFieldStudent(
+    order: HydratedDocument<Order>,
+    lang: 'en' | 'ar' = 'en',
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-      const course = await this.getCourseDetailsByID(order.courseId, lang);
-      const user = await this.userService.getCurrentUserDocument(order.userId, lang);
+    const course = await this.getCourseDetailsByID(order.courseId, lang);
+    const user = await this.userService.getCurrentUserDocument(
+      order.userId,
+      lang,
+    );
 
+    if (!course) {
+      const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
+      throw new NotFoundException(message);
+    }
+
+    if (!user) {
+      const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
+      throw new NotFoundException(message);
+    }
+
+    course.students.push(user._id);
+
+    await this.courseModel.findByIdAndUpdate(order.courseId, {
+      students: course.students,
+    });
+  }
+  //============================================================================
+  // Delete a course by ID
+  public async deleteCourse(
+    courseId: Types.ObjectId,
+    lang: 'en' | 'ar' = 'en',
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    try {
+      const course = await this.courseModel.findById(courseId);
       if (!course) {
         const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
         throw new NotFoundException(message);
       }
 
-      if (!user) {
-        const message = lang === 'ar' ? 'المستخدم غير موجود' : 'User not found';
-        throw new NotFoundException(message);
-      }
+      await course.deleteOne();
 
-      course.students.push(user._id);
-
-      await this.courseModel.findByIdAndUpdate(order.courseId, { students: course.students });
-    }
-    //============================================================================
-    // Delete a course by ID
-    public async deleteCourse(courseId: Types.ObjectId,  lang: 'en' | 'ar' = 'en') {
-      lang=['en','ar'].includes(lang)?lang:'en';
-
-      try {
-        const course = await this.courseModel.findById(courseId);
-        if (!course) {
-          const message = lang === 'ar' ? 'الكورس غير موجود' : 'Course not found';
-          throw new NotFoundException(message);
-        }
-
-        await course.deleteOne();
-
-        const message = lang === 'ar' ? 'تم حذف الدورة بنجاح' : 'Course deleted successfully';
-        return {
-          success: true,
-          message: message,
-        };
-      } catch (error) {
-        const message = lang === 'ar' ? 'فشل في حذف الدورة' : 'Failed to delete course';
-        throw new InternalServerErrorException(message);
-      }
-    }
-    //============================================================================
-    // Function to extract all unique categories with localization
-    async getAllCategories() {
-    const categories = await this.categoryModel.find().sort().lean();
-    return categories.map((cat)=> ({
-    _id: cat._id,
-    title: cat.title??'',
-    description: cat.description ??'',
-    isFeatured: cat.isFeatured ?? false,
-    displayOrder: cat.displayOrder ?? 0,
-  }));
-
-    }
-    // Function to extract all unique levels with localization
-    async getAllLevels() {
-    const level = await this.levelModel.find().sort().lean();
-    return level.map((cat)=> ({
-    _id: cat._id,
-    title: cat.title??''
-  }));
-
-    }
-    // Get all courses with filters, sorting, pagination, and role-based access for teacher 
-    public async getCoursesByInstructor(instructorId: string,lang: 'en' | 'ar' = 'en',page: number = 1,limit: number = 10): 
-    Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
-      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
-
-      const filter = { instructorId: new Types.ObjectId(instructorId) };
-
-      const skip = (page - 1) * limit;
-      const totalCourses = await this.courseModel.countDocuments(filter);
-
-      const courses = await this.courseModel.find(filter)
-        .populate('category', 'title')
-        .populate('level', 'title')
-        .skip(skip)
-        .limit(limit)
-        .exec();
-
-      const localizedCourses = courses.map(course => ({
-        ...course.toObject(),
-        title: course.title?.[lang] || '',
-        description: course.description?.[lang] || '',
-        subtitle: course.subtitle?.[lang] || '',
-        welcomeMessage: course.welcomeMessage?.[lang] || '',
-        level: {
-          en: (course.level as any)?.title?.en || '',
-          ar: (course.level as any)?.title?.ar || '',
-        },
-        category: {
-          en: (course.category as any)?.title?.en || '',
-          ar: (course.category as any)?.title?.ar || '',
-        },
-      }));
-
+      const message =
+        lang === 'ar' ? 'تم حذف الدورة بنجاح' : 'Course deleted successfully';
       return {
-        totalCourses,
-        totalPages: Math.ceil(totalCourses / limit),
-        currentPage: page,
-        courses: localizedCourses,
+        success: true,
+        message: message,
       };
+    } catch (error) {
+      const message =
+        lang === 'ar' ? 'فشل في حذف الدورة' : 'Failed to delete course';
+      throw new InternalServerErrorException(message);
     }
-    }
+  }
+  //============================================================================
+  // Function to extract all unique categories with localization
+  async getAllCategories() {
+    const categories = await this.categoryModel.find().sort().lean();
+    return categories.map((cat) => ({
+      _id: cat._id,
+      title: cat.title ?? '',
+      description: cat.description ?? '',
+      isFeatured: cat.isFeatured ?? false,
+      displayOrder: cat.displayOrder ?? 0,
+    }));
+  }
+  // Function to extract all unique levels with localization
+  async getAllLevels() {
+    const level = await this.levelModel.find().sort().lean();
+    return level.map((cat) => ({
+      _id: cat._id,
+      title: cat.title ?? '',
+    }));
+  }
+  // Get all courses with filters, sorting, pagination, and role-based access for teacher
+  public async getCoursesByInstructor(
+    instructorId: string,
+    lang: 'en' | 'ar' = 'en',
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    totalCourses: number;
+    totalPages: number;
+    currentPage: number;
+    courses: any[];
+  }> {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+
+    const filter = { instructorId: new Types.ObjectId(instructorId) };
+
+    const skip = (page - 1) * limit;
+    const totalCourses = await this.courseModel.countDocuments(filter);
+
+    const courses = await this.courseModel
+      .find(filter)
+      .populate('category', 'title')
+      .populate('level', 'title')
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    const localizedCourses = courses.map((course) => ({
+      ...course.toObject(),
+      title: course.title?.[lang] || '',
+      description: course.description?.[lang] || '',
+      subtitle: course.subtitle?.[lang] || '',
+      welcomeMessage: course.welcomeMessage?.[lang] || '',
+      level: {
+        en: (course.level as any)?.title?.en || '',
+        ar: (course.level as any)?.title?.ar || '',
+      },
+      category: {
+        en: (course.category as any)?.title?.en || '',
+        ar: (course.category as any)?.title?.ar || '',
+      },
+    }));
+
+    return {
+      totalCourses,
+      totalPages: Math.ceil(totalCourses / limit),
+      currentPage: page,
+      courses: localizedCourses,
+    };
+  }
+
+  public async getCourseDistributionByCategory(
+    lang: 'en' | 'ar' = 'en',
+  ): Promise<{ category: string; count: number }[]> {
+    // Dynamically select the language field for the category.
+    const categoryField = `$category.${lang}`;
+
+    const distribution = await this.courseModel.aggregate([
+      {
+        // Group documents by the localized category name.
+        $group: {
+          _id: categoryField,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        // Reshape the output documents.
+        $project: {
+          _id: 0,
+          category: '$_id',
+          count: '$count',
+        },
+      },
+      {
+        // Ensure we don't include a group for courses with no category.
+        $match: {
+          category: { $ne: null },
+        },
+      },
+      {
+        // Sort by the number of courses in descending order.
+        $sort: { count: -1 },
+      },
+    ]);
+
+    return distribution;
+  }
+
+  public async getCoursePublicationStats(): Promise<
+    { status: 'Published' | 'Unpublished'; count: number }[]
+  > {
+    const stats = await this.courseModel.aggregate([
+      {
+        $group: { 
+          _id: '$isPublished',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statsMap = new Map(stats.map((item) => [item._id, item.count]));
+
+    return [
+      { status: 'Published', count: statsMap.get(true) || 0 },
+      { status: 'Unpublished', count: statsMap.get(false) || 0 },
+    ];
+  }
+}
