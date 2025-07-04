@@ -10,6 +10,7 @@ import { Order } from 'src/order/schema/order.schema';
 import { Student } from 'src/student-course/schemas/student-course.schema';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { Level } from './schemas/level.schema';
+import mongoose from 'mongoose';
 
 @Injectable()
 export class CourseService {
@@ -20,7 +21,9 @@ export class CourseService {
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
     @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
     @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
+    
     {}
+    
     // Add a new course by instructor
     // Validates instructor, creates course, links course to instructor
     public async AddNewCourse(
@@ -272,99 +275,132 @@ export class CourseService {
 }
     //============================================================================
     // Get all courses  sorting, pagination, and role-based access 
+    isUUID = (value: any): boolean => {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);};
+
     public async getAllCoursesNoFilter(
-  sortBy: string = 'price-lowtohigh',
-  page: number = 1,
-  limit: number = 10,
-  lang: 'en' | 'ar' = 'en',
-): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
-  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+      sortBy: string = 'price-lowtohigh',
+      page: number = 1,
+      limit: number = 10,
+      lang: 'en' | 'ar' = 'en',
+    ): Promise<{ totalCourses: number; totalPages: number; currentPage: number; courses: any[] }> {
+      lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-  const finalFilter = {};
+      const finalFilter = {};
 
-  let sortParam: any = {};
-  switch (sortBy) {
-    case 'price-lowtohigh':
-      sortParam = { pricing: 1 };
-      break;
-    case 'price-hightolow':
-      sortParam = { pricing: -1 };
-      break;
-    case 'title-atoz':
-      sortParam = { [`title.${lang}`]: 1 };
-      break;
-    case 'title-ztoa':
-      sortParam = { [`title.${lang}`]: -1 };
-      break;
-    default:
-      sortParam = { pricing: 1 };
-  }
+      let sortParam: any = {};
+      switch (sortBy) {
+        case 'price-lowtohigh':
+          sortParam = { pricing: 1 };
+          break;
+        case 'price-hightolow':
+          sortParam = { pricing: -1 };
+          break;
+        case 'title-atoz':
+          sortParam = { [`title.${lang}`]: 1 };
+          break;
+        case 'title-ztoa':
+          sortParam = { [`title.${lang}`]: -1 };
+          break;
+        default:
+          sortParam = { pricing: 1 };
+      }
 
-  const skip = (page - 1) * limit;
-  const totalCourses = await this.courseModel.countDocuments(finalFilter);
+      const skip = (page - 1) * limit;
+      const totalCourses = await this.courseModel.countDocuments(finalFilter);
 
-  const courses = await this.courseModel
-    .find(finalFilter)
-    .populate('category', 'title')
-    .populate('level', 'title')
-    .populate({
-      path: 'students',
-      populate: {
-        path: 'userId',
-        model: 'User',
-        select: '_id userName userEmail gender',
-      },
-    })
-    .sort(sortParam)
-    .skip(skip)
-    .limit(limit)
-    .exec();
+      const courses = await this.courseModel
+        .find(finalFilter)
+        .populate('category', 'title')
+        .populate('level', 'title')
+        .populate({
+          path: 'students',
+          populate: {
+            path: 'userId',
+            model: 'User',
+            select: '_id userName userEmail gender',
+          },
+        })
+        .sort(sortParam)
+        .skip(skip)
+        .limit(limit)
+        .exec();
 
-  const localizedCourses = courses.map(course => {
-    const obj = course.toObject();
+      const localizedCourses = [];
 
-    const categoryTitle =
-      obj.category && typeof obj.category !== 'string' && 'title' in obj.category
-        ? obj.category.title
-        : {};
+      for (const course of courses) {
+        const obj = course.toObject();
 
-    const levelTitle =
-      obj.level && typeof obj.level !== 'string' && 'title' in obj.level
-        ? obj.level.title
-        : {};
+        const curriculumItems = Array.isArray(obj.curriculum) ? obj.curriculum : [];
+        const validLectureIds: any[] = [];
 
-    const formattedStudents = (obj.students || []).map((student: any) => {
-      const user = student.userId;
-      if (!user) return null;
+        for (const item of curriculumItems) {
+          if (this.isUUID(item)) {
+            const lecture = await this.lectureModel.findOne({ id: item });
+            if (lecture) validLectureIds.push(lecture._id);
+          } else if (mongoose.Types.ObjectId.isValid(item)) {
+            validLectureIds.push(new mongoose.Types.ObjectId(item));
+          }
+        }
+
+        const lectureDocs = await this.lectureModel.find({ _id: { $in: validLectureIds } });
+
+        const formattedLectures = lectureDocs.map(lecture => ({
+          _id: lecture._id,
+          title: lecture.title?.[lang] ?? '',
+          videoUrl: lecture.videoUrl,
+          public_id: lecture.public_id,
+          freePreview: lecture.freePreview,
+        }));
+
+        // ===============================
+        // Step 2: معالجة الطلاب
+        // ===============================
+        const formattedStudents = (obj.students || []).map((student: any) => {
+          const user = student.userId;
+          if (!user) return null;
+          return {
+            _id: user._id,
+            userName: user.userName,
+            userEmail: user.userEmail,
+            gender: user.gender,
+          };
+        }).filter(Boolean);
+
+        // ===============================
+        // Step 3: معالجة العناوين المترجمة
+        // ===============================
+        const categoryTitle =
+          obj.category && typeof obj.category !== 'string' && 'title' in obj.category
+            ? obj.category.title?.[lang]
+            : '';
+
+        const levelTitle =
+          obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+            ? obj.level.title?.[lang]
+            : '';
+
+        localizedCourses.push({
+          ...obj,
+          title: obj.title?.[lang] ?? '',
+          description: obj.description?.[lang] ?? '',
+          subtitle: obj.subtitle?.[lang] ?? '',
+          welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
+          level: levelTitle,
+          category: categoryTitle,
+          objectives: obj.objectives?.[lang] ?? '',
+          students: formattedStudents,
+          curriculum: formattedLectures, // استبدل الـ curriculum بالمحاضرات المحمّلة
+        });
+      }
 
       return {
-        _id: user._id,
-        userName: user.userName,
-        userEmail: user.userEmail,
-        gender: user.gender,
+        totalCourses,
+        totalPages: Math.ceil(totalCourses / limit),
+        currentPage: page,
+        courses: localizedCourses,
       };
-    }).filter(Boolean);
-
-    return {
-      ...obj,
-      title: obj.title?.[lang] ?? '',
-      description: obj.description?.[lang] ?? '',
-      subtitle: obj.subtitle?.[lang] ?? '',
-      welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
-      level: levelTitle?.[lang] ?? '',
-      category: categoryTitle?.[lang] ?? '',
-      objectives: obj.objectives?.[lang] ?? '',
-      students: formattedStudents,
-    };
-  });
-
-  return {
-    totalCourses,
-    totalPages: Math.ceil(totalCourses / limit),
-    currentPage: page,
-    courses: localizedCourses,
-  };
-}
+    }
     //============================================================================
     // Get course details by ID with localization
     public async getCourseDetailsByID(id: Types.ObjectId, lang: 'en' | 'ar' = 'en', user?: any) {
