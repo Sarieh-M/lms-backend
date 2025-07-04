@@ -8,7 +8,7 @@ import { UserRole } from 'utilitis/enums';
 import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 import { Types } from 'mongoose';
 
-@Controller('order')
+@Controller('api/order')
 export class OrderController {
   constructor(private readonly orderService: OrderService,
   ) {}
