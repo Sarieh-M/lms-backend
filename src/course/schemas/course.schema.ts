@@ -26,7 +26,9 @@ export class Course {
 
   // Localized level information
   @Prop({type: mongoose.Schema.Types.ObjectId, ref: 'Level', required: true })
-  level: { en: string; ar: string };
+  level: {
+    title: any; en: string; ar: string 
+};
 
   // Primary language of the course (e.g., 'English', 'Arabic')
   @Prop({ required: true })

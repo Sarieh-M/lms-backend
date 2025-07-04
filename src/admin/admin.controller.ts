@@ -7,15 +7,19 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Request } from 'express';
-
+import { Roles } from 'src/user/decorator/user-role.decorator';
+import { UserRole } from 'utilitis/enums';
+import { AuthRolesGuard } from 'src/user/guard/auth-role.guard';
 @Controller('api/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('dashboard-users')
+  @Roles(UserRole.ADMIN)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async getAllUsersForDashboard(
     @Req() req: Request,
@@ -33,46 +37,53 @@ export class AdminController {
   }
 
   @Get('dashboard-summary')
+  @Roles(UserRole.ADMIN)
   async getDashboardSummary(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getDashboardSummary(lang as 'en' | 'ar');
   }
 
   @Get('dashboard-roles-count')
+  @Roles(UserRole.ADMIN)
   async getUsersCountByRole(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getUsersCountByRole(lang as 'en' | 'ar');
   }
 
   @Get('dashboard-latest-users')
+  @Roles(UserRole.ADMIN)
   @UsePipes(new ValidationPipe({ transform: true }))
   async getLatestUsers(
     @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getLatestUsers(limit, lang as 'en' | 'ar');
   }
 
   @Get('student-teacher-counts')
+  @Roles(UserRole.ADMIN)
   async getStudentTeacherCounts(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getStudentTeacherCounts(lang as 'en' | 'ar');
   }
 
   @Get('categories-course-counts')
+  @Roles(UserRole.ADMIN)
   async getCategoriesWithCourseCounts(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getCategoriesWithCourseCounts(lang as 'en' | 'ar');
   }
 
   @Get('additional-analytics')
+  @Roles(UserRole.ADMIN)
   async getAdditionalAnalytics(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getAdditionalAnalytics(lang as 'en' | 'ar');
   }
 
   @Get('courses')
+  @Roles(UserRole.ADMIN)
   async getAllCourses(
     @Req() req: Request,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -95,6 +106,7 @@ export class AdminController {
   }
 
   @Get('revenue-trends')
+  @Roles(UserRole.ADMIN)
   async getLastFiveMonthsRevenue(@Req() req: Request) {
     const lang = (req as any).lang || 'en';
     return this.adminService.getLastFiveMonthsRevenue(lang as 'en' | 'ar');
