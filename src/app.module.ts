@@ -10,6 +10,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { AppController } from './app.controller';
 import { MailModule } from './mail/mail.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   
@@ -25,7 +26,8 @@ import { MongooseModule } from '@nestjs/mongoose';
     CheckoutModule,
     CourseProgressModule,
     CloudinaryModule,
-    MailModule
+    MailModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [],

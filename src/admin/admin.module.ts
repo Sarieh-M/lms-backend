@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/user/schemas/user.schema';
-import { UsersService } from './admin.service';
-import { UsersController } from './admin.controller';
+import { AdminService } from './admin.service';
+import { AdminController } from './admin.controller';
 import { Order, OrderSchema } from 'src/order/schema/order.schema';
 import { Course, CourseSchema } from 'src/course/schemas/course.schema';
 
@@ -15,8 +15,8 @@ import { Course, CourseSchema } from 'src/course/schemas/course.schema';
       { name: Order.name, schema: OrderSchema },   // لإحصائيات الطلبات
     ]),
   ],
-  controllers: [UsersController],
-  providers: [UsersService],
-  exports: [UsersService], // إذا كنت ستستخدم UsersService في Module آخر
+  controllers: [AdminController],
+  providers: [AdminService],
+  exports: [AdminService],
 })
-export class AdminModule {}
+export class AdminModule {} // إذا كنت ستستخدم UsersService في Module آخر
