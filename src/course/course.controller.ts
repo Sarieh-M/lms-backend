@@ -113,10 +113,11 @@ export class CourseController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Headers('lang') lang: 'en' | 'ar' = 'en',
-    
+    @Query('categoryId') categoryId?:string,
+    @Query('levelId') levelId ?:string,
   ) {
     
-    return this.courseService.getAllCoursesNoFilter(sortBy, +page, +limit, lang,);
+    return this.courseService.getAllCoursesNoFilter(sortBy, +page, +limit, lang,categoryId,levelId);
   }
   // GET COURSE BY ID [PUBLIC]
   @Get('getCourseById/:id')

@@ -307,107 +307,120 @@ export class CourseService {
   //============================================================================
   // Get all courses  sorting, pagination, and role-based access
   public async getAllCoursesNoFilter(
-    sortBy: string = 'price-lowtohigh',
-    page: number = 1,
-    limit: number = 10,
-    lang: 'en' | 'ar' = 'en',
-  ): Promise<{
-    totalCourses: number;
-    totalPages: number;
-    currentPage: number;
-    courses: any[];
-  }> {
-    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+  sortBy: string = 'price-lowtohigh',
+  page: number = 1,
+  limit: number = 10,
+  lang: 'en' | 'ar' = 'en',
+  categoryId?: string,
+  levelId?: string,
+): Promise<{
+  totalCourses: number;
+  totalPages: number;
+  currentPage: number;
+  courses: any[];
+}> {
+  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
-    const finalFilter = {};
+  const finalFilter: any = {};
 
-    let sortParam: any = {};
-    switch (sortBy) {
-      case 'price-lowtohigh':
-        sortParam = { pricing: 1 };
-        break;
-      case 'price-hightolow':
-        sortParam = { pricing: -1 };
-        break;
-      case 'title-atoz':
-        sortParam = { [`title.${lang}`]: 1 };
-        break;
-      case 'title-ztoa':
-        sortParam = { [`title.${lang}`]: -1 };
-        break;
-      default:
-        sortParam = { pricing: 1 };
-    }
+  // ✅ إضافة فلترة حسب category
+  if (categoryId) {
+    finalFilter.category = new Types.ObjectId(categoryId);
+  }
 
-    const skip = (page - 1) * limit;
-    const totalCourses = await this.courseModel.countDocuments(finalFilter);
+  // ✅ إضافة فلترة حسب level
+  if (levelId) {
+    finalFilter.level = new Types.ObjectId(levelId);
+  }
 
-    const courses = await this.courseModel
-      .find(finalFilter)
-      .populate('category', 'title')
-      .populate('level', 'title')
-      .populate({
-        path: 'students',
-        populate: {
-          path: 'userId',
-          model: 'User',
-          select: '_id userName userEmail gender',
-        },
+  let sortParam: any = {};
+  switch (sortBy) {
+    case 'price-lowtohigh':
+      sortParam = { pricing: 1 };
+      break;
+    case 'price-hightolow':
+      sortParam = { pricing: -1 };
+      break;
+    case 'title-atoz':
+      sortParam = { [`title.${lang}`]: 1 };
+      break;
+    case 'title-ztoa':
+      sortParam = { [`title.${lang}`]: -1 };
+      break;
+    default:
+      sortParam = { pricing: 1 };
+  }
+
+  const skip = (page - 1) * limit;
+
+  const totalCourses = await this.courseModel.countDocuments(finalFilter);
+
+  const courses = await this.courseModel
+    .find(finalFilter)
+    .populate('category', 'title')
+    .populate('level', 'title')
+    .populate({
+      path: 'students',
+      populate: {
+        path: 'userId',
+        model: 'User',
+        select: '_id userName userEmail gender',
+      },
+    })
+    .sort(sortParam)
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  const localizedCourses = courses.map((course) => {
+    const obj = course.toObject();
+
+    const categoryTitle =
+      obj.category &&
+      typeof obj.category !== 'string' &&
+      'title' in obj.category
+        ? obj.category.title
+        : {};
+
+    const levelTitle =
+      obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+        ? obj.level.title
+        : {};
+
+    const formattedStudents = (obj.students || [])
+      .map((student: any) => {
+        const user = student.userId;
+        if (!user) return null;
+
+        return {
+          _id: user._id,
+          userName: user.userName,
+          userEmail: user.userEmail,
+          gender: user.gender,
+        };
       })
-      .sort(sortParam)
-      .skip(skip)
-      .limit(limit)
-      .exec();
-
-    const localizedCourses = courses.map((course) => {
-      const obj = course.toObject();
-
-      const categoryTitle =
-        obj.category &&
-        typeof obj.category !== 'string' &&
-        'title' in obj.category
-          ? obj.category.title
-          : {};
-
-      const levelTitle =
-        obj.level && typeof obj.level !== 'string' && 'title' in obj.level
-          ? obj.level.title
-          : {};
-
-      const formattedStudents = (obj.students || [])
-        .map((student: any) => {
-          const user = student.userId;
-          if (!user) return null;
-
-          return {
-            _id: user._id,
-            userName: user.userName,
-            userEmail: user.userEmail,
-            gender: user.gender,
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        ...obj,
-        title: obj.title?.[lang] ?? '',
-        description: obj.description?.[lang] ?? '',
-        subtitle: obj.subtitle?.[lang] ?? '',
-        welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
-        level: levelTitle?.[lang] ?? '',
-        category: categoryTitle?.[lang] ?? '',
-        objectives: obj.objectives?.[lang] ?? '',
-        students: formattedStudents,
-      };
-    });
+      .filter(Boolean);
 
     return {
-      totalCourses,
-      totalPages: Math.ceil(totalCourses / limit),
-      currentPage: page,
-      courses: localizedCourses,
+      ...obj,
+      title: obj.title?.[lang] ?? '',
+      description: obj.description?.[lang] ?? '',
+      subtitle: obj.subtitle?.[lang] ?? '',
+      welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
+      level: levelTitle?.[lang] ?? '',
+      category: categoryTitle?.[lang] ?? '',
+      objectives: obj.objectives?.[lang] ?? '',
+      students: formattedStudents,
     };
-  }
+  });
+
+  return {
+    totalCourses,
+    totalPages: Math.ceil(totalCourses / limit),
+    currentPage: page,
+    courses: localizedCourses,
+  };
+}
   //============================================================================
   // Get course details by ID with localization
   public async getCourseDetailsByID(
@@ -755,7 +768,7 @@ export class CourseService {
       courses: localizedCourses,
     };
   }
-
+  //============================================================================
   public async getCourseDistributionByCategory(
     lang: 'en' | 'ar' = 'en',
   ): Promise<{ category: string; count: number }[]> {
@@ -792,7 +805,7 @@ export class CourseService {
 
     return distribution;
   }
-
+  //============================================================================
   public async getCoursePublicationStats(): Promise<
     { status: 'Published' | 'Unpublished'; count: number }[]
   > {
