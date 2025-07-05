@@ -357,7 +357,9 @@ export class CourseService {
       sortParam = { pricing: 1 };
   }
 
-  const skip = (page - 1) * limit;
+  const validatedPage = Math.max(1, page);
+  const validatedLimit = Math.max(1, limit);
+  const skip = (validatedPage - 1) * validatedLimit;
 
   const totalCourses = await this.courseModel.countDocuments(finalFilter);
 
