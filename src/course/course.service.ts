@@ -1,5 +1,11 @@
-
-import { forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CreateCourseDto, PrimaryLanguage } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -22,20 +28,19 @@ export class CourseService {
     @InjectModel(Level.name) private readonly levelModel: Model<Level>,
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
 
-    @Inject(forwardRef(() => UserService)) private readonly userService: UserService,
-    @InjectModel(Lecture.name) private readonly lectureModel:Model<Lecture>,) 
-    
-    {}
-    
-    // Add a new course by instructor
-    // Validates instructor, creates course, links course to instructor
-    public async AddNewCourse(
-  createCourseDto: CreateCourseDto,
-  instructorId: Types.ObjectId,
-  lang: 'en' | 'ar' = 'en',
-) {
-  lang = ['en', 'ar'].includes(lang) ? lang : 'en';
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
+    @InjectModel(Lecture.name) private readonly lectureModel: Model<Lecture>,
+  ) {}
 
+  // Add a new course by instructor
+  // Validates instructor, creates course, links course to instructor
+  public async AddNewCourse(
+    createCourseDto: CreateCourseDto,
+    instructorId: Types.ObjectId,
+    lang: 'en' | 'ar' = 'en',
+  ) {
+    lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
     const user = await this.userService.getCurrentUserDocument(
       instructorId,
@@ -306,6 +311,7 @@ export class CourseService {
   }
   //============================================================================
   // Get all courses  sorting, pagination, and role-based access
+
   public async getAllCoursesNoFilter(
   sortBy: string = 'price-lowtohigh',
   page: number = 1,
@@ -322,7 +328,6 @@ export class CourseService {
   lang = ['en', 'ar'].includes(lang) ? lang : 'en';
 
   const finalFilter: any = {};
-
   // ✅ إضافة فلترة حسب category
   if (categoryId) {
     finalFilter.category = new Types.ObjectId(categoryId);
@@ -332,6 +337,7 @@ export class CourseService {
   if (levelId) {
     finalFilter.level = new Types.ObjectId(levelId);
   }
+
 
   let sortParam: any = {};
   switch (sortBy) {
@@ -399,7 +405,52 @@ export class CourseService {
           gender: user.gender,
         };
       })
+
       .filter(Boolean);
+
+
+
+    const localizedCourses = courses.map((course) => {
+      const obj = course.toObject();
+
+      const categoryTitle =
+        obj.category &&
+        typeof obj.category !== 'string' &&
+        'title' in obj.category
+          ? obj.category.title
+          : {};
+
+      const levelTitle =
+        obj.level && typeof obj.level !== 'string' && 'title' in obj.level
+          ? obj.level.title
+          : {};
+
+      const formattedStudents = (obj.students || [])
+        .map((student: any) => {
+          const user = student.userId;
+          if (!user) return null;
+
+          return {
+            _id: user._id,
+            userName: user.userName,
+            userEmail: user.userEmail,
+            gender: user.gender,
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        ...obj,
+        title: obj.title?.[lang] ?? '',
+        description: obj.description?.[lang] ?? '',
+        subtitle: obj.subtitle?.[lang] ?? '',
+        welcomeMessage: obj.welcomeMessage?.[lang] ?? '',
+        level: levelTitle?.[lang] ?? '',
+        category: categoryTitle?.[lang] ?? '',
+        objectives: obj.objectives?.[lang] ?? '',
+        students: formattedStudents,
+      };
+    });
 
     return {
       ...obj,
@@ -495,27 +546,29 @@ export class CourseService {
         curriculum: courseDetails.curriculum,
         students: formattedStudents,
         isPublished: courseDetails.isPublished,
+        createdAt: courseDetails.createdAt,
       };
     }
-   return {
-    _id: courseDetails._id,
-    instructorId: courseDetails.instructorId,
-    instructorName: courseDetails.instructorName,
-    title: courseDetails.title ?? {},
-    category: courseDetails.category?.title ?? {},
-    level: courseDetails.level?.title ?? {},
-    image: courseDetails.image,
-    subtitle: courseDetails.subtitle ?? {},
-    primaryLanguage: courseDetails.primaryLanguage,
-    description: courseDetails.description ?? {},
-    welcomeMessage: courseDetails.welcomeMessage ?? {},
-    objectives: courseDetails.objectives ?? [],
-    pricing: courseDetails.pricing,
-    curriculum: courseDetails.curriculum,
-    students: formattedStudents,
-    isPublished: courseDetails.isPublished,
-  };
-}
+    return {
+      _id: courseDetails._id,
+      instructorId: courseDetails.instructorId,
+      instructorName: courseDetails.instructorName,
+      title: courseDetails.title ?? {},
+      category: courseDetails.category?.title ?? {},
+      level: courseDetails.level?.title ?? {},
+      image: courseDetails.image,
+      subtitle: courseDetails.subtitle ?? {},
+      primaryLanguage: courseDetails.primaryLanguage,
+      description: courseDetails.description ?? {},
+      welcomeMessage: courseDetails.welcomeMessage ?? {},
+      objectives: courseDetails.objectives ?? [],
+      pricing: courseDetails.pricing,
+      curriculum: courseDetails.curriculum,
+      students: formattedStudents,
+      isPublished: courseDetails.isPublished,
+      createdAt: courseDetails.createdAt,
+    };
+  }
   //============================================================================
   // Update course by ID if instructor is authorized
   public async updateCourseByID(
@@ -811,7 +864,7 @@ export class CourseService {
   > {
     const stats = await this.courseModel.aggregate([
       {
-        $group: { 
+        $group: {
           _id: '$isPublished',
           count: { $sum: 1 },
         },
